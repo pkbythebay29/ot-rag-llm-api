@@ -1,0 +1,15 @@
+echo "
+__pycache__/
+*.pyc
+*.pkl
+*.log
+*.wav
+*.flac
+*.mp4
+*.zip
+*.db
+.env
+venv/
+rag_env/
+.cache/
+" > .gitignore

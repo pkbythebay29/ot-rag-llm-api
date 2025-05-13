@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pytesseract
+pymupdf
+sentence-transformers
+faiss-cpu
+transformers
+moviepy
+SpeechRecognition
+pyaudio

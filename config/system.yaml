@@ -1,0 +1,4 @@
+assets:
+  - name: Pump_A
+    docs:
+      - manuals/pump_manual.pdf
