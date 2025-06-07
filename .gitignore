@@ -1,15 +1,66 @@
-echo "
+# Byte-compiled / optimized / DLL files
 __pycache__/
-*.pyc
-*.pkl
-*.log
-*.wav
-*.flac
-*.mp4
-*.zip
-*.db
-.env
+*.py[cod]
+*$py.class
+
+# Build outputs
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
 venv/
+env/
 rag_env/
+
+# System & Editor config
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Logs & debugging
+*.log
+*.tmp
+*.bak
+
+# Jupyter/IPython
+.ipynb_checkpoints
+
+# Model & cache folders
 .cache/
-" > .gitignore
+.huggingface/
+transformers_cache/
+torch_cache/
+datasets/
+*.bin
+*.pt
+
+# FAISS and embeddings
+data/indexes/
+*.faiss
+*.pkl
+
+# User-generated docs/audio
+data/manuals/*
+!data/manuals/.gitkeep  # keep folder structure
+
+# Config (optional override)
+config/system.yaml
+!config/.gitkeep
+
+# Test results / coverage
+.coverage
+htmlcov/
+*.cover
+coverage.xml
+*.test.xml
+
+# PyInstaller
+*.spec
+
+# PyPI / Build artifacts
+*.tar.gz
+*.whl

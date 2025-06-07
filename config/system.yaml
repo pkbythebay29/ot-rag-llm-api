@@ -1,4 +1,40 @@
+# --- System & Data Configuration ---
 assets:
   - name: Pump_A
     docs:
-      - manuals/pump_manual.pdf
+      - pump_manual.txt
+      - troubleshooting_guide.pdf
+
+  - name: Compressor_X
+    docs:
+      - compressor_specs.pdf
+      - voice_note.mp3
+      - control_panel.png
+
+# --- Model Configuration ---
+models:
+  embedding_model: sentence-transformers/all-MiniLM-L6-v2
+  llm_model: tiiuae/falcon-7b-instruct  # or mistralai/Mistral-7B-Instruct-v0.1
+
+# --- FAISS & Retrieval Settings ---
+retriever:
+  top_k: 5  # number of chunks to retrieve
+  index_dir: data/indexes
+
+# --- LLM Prompt & Inference Settings ---
+llm:
+  max_new_tokens: 256
+  prompt_template: |
+    You are an assistant for technical troubleshooting.
+
+    Use the following context to answer the question:
+    {context}
+
+    Question: {question}
+    Answer:
+
+# --- General Behavior ---
+settings:
+  force_rebuild_index: false  # Set true to always rebuild FAISS
+  data_dir: data/manuals      # Base path for all documents
+  use_cpu: true               # Set to false if GPU available
