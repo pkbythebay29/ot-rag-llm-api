@@ -22,23 +22,11 @@ A fully  local GPU poor, multimodal Retrieval-Augmented Generation (RAG) system 
 
 ---
 
-## 📂 Project Structure
+## 📦 Installation
 
-```
-rag_llm_api_pipeline/
-├── api/                # FastAPI application
-│   └── server.py
-├── cli/                # Command-line interface
-│   └── main.py
-├── config/
-│   └── system.yaml     # Asset and document config
-├── data/
-│   └── manuals/        # PDF, image, audio, etc.
-├── loader.py           # Multimodal file loader
-├── retriever.py        # Embedding, FAISS search
-├── llm_wrapper.py      # Local LLM text generation
-├── requirements.txt    # Python dependencies
-├── README.md
+```bash
+pip install rag-llm-api-pipeline
+
 ```
 
 ---
@@ -96,9 +84,30 @@ Edit `config/system.yaml` to define your assets and associated documents:
 assets:
   - name: Pump_A
     docs:
-      - manuals/pump_manual.pdf
-      - manuals/startup_guide.png
-      - manuals/technician_note.wav
+      - pump_manual.pdf
+      - safety_guide.mp4
+
+models:
+  embedding_model: sentence-transformers/all-MiniLM-L6-v2
+  llm_model: tiiuae/falcon-7b-instruct
+
+retriever:
+  top_k: 5
+  index_dir: data/indexes
+
+llm:
+  max_new_tokens: 256
+  prompt_template: |
+    Use the following context to answer the question:
+    {context}
+
+    Question: {question}
+    Answer:
+
+settings:
+  data_dir: data/manuals
+  force_rebuild_index: false
+  use_cpu: true
 ```
 
 > Documents can be PDFs, plain text, images, or audio/video files.
