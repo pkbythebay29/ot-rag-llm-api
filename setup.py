@@ -8,7 +8,7 @@ with open("requirements.txt", encoding="utf-8") as f:
 
 setup(
     name="rag-llm-api-pipeline",
-    version="0.1.0",
+    version="0.2.0",
     author="pkbythebay29",
     author_email="kannan@haztechrisk.org",
     description="Multimodal RAG pipeline for low-compute, local, real-world deployment",
