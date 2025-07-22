@@ -1,45 +1,38 @@
 # CLI tool for querying
-import argparse
-from ..retriever import get_answer
-from ..retriever import build_index
-import yaml
-import os
-
-CONFIG_PATH = "config/system.yaml"
-
-def load_system_config(system_name: str) -> list[str]:
-    if not os.path.exists(CONFIG_PATH):
-        raise FileNotFoundError(f"Config file not found: {CONFIG_PATH}")
-    with open(CONFIG_PATH, "r") as f:
-        config = yaml.safe_load(f)
-    for asset in config.get("assets", []):
-        if asset["name"].lower() == system_name.lower():
-            doc_paths = [os.path.join("data/manuals", p) for p in asset.get("docs", [])]
-            return doc_paths
-    raise ValueError(f"System '{system_name}' not found in config.")
-
+import argparse, sys
+from rag_llm_api_pipeline.retriever import build_index, get_answer, list_indexed_data
+from rag_llm_api_pipeline.config_loader import load_config
 
 def main():
-    parser = argparse.ArgumentParser(description="Ask questions against an industrial system knowledge base.")
-    parser.add_argument("--system", required=True, help="System name defined in config YAML.")
-    parser.add_argument("--question", required=True, help="The question to ask.")
-    parser.add_argument("--build-index", action="store_true", help="Rebuild index from scratch.")
+    parser = argparse.ArgumentParser(description="RAG CLI")
+    parser.add_argument("--system", required=True, help="System name")
+    parser.add_argument("--question", help="Ask a question")
+    parser.add_argument("--build-index", action="store_true", help="Build index")
+    parser.add_argument("--serve", action="store_true", help="Run API server")
+    parser.add_argument("--list-data", action="store_true", help="List indexed data")
+    parser.add_argument("--show-chunks", action="store_true", help="Show retrieved chunks")
+    parser.add_argument("--precision", choices=["fp32", "fp16", "bfloat16"], help="Override model precision")
 
     args = parser.parse_args()
-
-    docs = load_system_config(args.system)
+    config = load_config()
+    if args.precision:
+        config["llm"]["precision"] = args.precision
 
     if args.build_index:
-        print(f"Building index for system: {args.system}")
-        build_index(args.system, docs)
+        build_index(args.system)
+        sys.exit(0)
 
-    print(f"Querying system '{args.system}': {args.question}")
-    answer, sources = get_answer(args.system, args.question)
+    if args.list_data:
+        list_indexed_data(args.system)
+        sys.exit(0)
 
-    print("\n🧠 Answer:\n", answer)
-    print("\n📚 Sources used:\n")
-    for i, chunk in enumerate(sources):
-        print(f"--- Chunk {i+1} ---\n{chunk.strip()[:300]}\n")
+    if args.serve:
+        from rag_llm_api_pipeline.api.server import start_api_server
+        start_api_server()
+        sys.exit(0)
 
-if __name__ == "__main__":
-    main()
+    if args.question:
+        answer, chunks = get_answer(args.system, args.question)
+        print(f"\nAnswer:\n{answer}\n")
+        if args.show_chunks:
+            print("Chunks:\n", "\n".join(chunks))

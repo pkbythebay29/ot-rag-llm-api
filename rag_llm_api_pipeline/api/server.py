@@ -1,35 +1,35 @@
-# FastAPI server code
+"""
+FastAPI server for RAG LLM API Pipeline
+"""
+
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from ..retriever import get_answer
-import yaml
-import os
+
+from rag_llm_api_pipeline.retriever import get_answer
+import logging
 
 app = FastAPI(title="RAG LLM API Pipeline")
 
-CONFIG_PATH = "config/system.yaml"
-
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 class QueryRequest(BaseModel):
     system: str
     question: str
 
+@app.get("/health", tags=["Health"])
+def health():
+    return {"status": "ok"}
 
-def load_system_config(system_name: str) -> list[str]:
-    if not os.path.exists(CONFIG_PATH):
-        raise FileNotFoundError(f"Config file not found: {CONFIG_PATH}")
-    with open(CONFIG_PATH, "r") as f:
-        config = yaml.safe_load(f)
-    for asset in config.get("assets", []):
-        if asset["name"].lower() == system_name.lower():
-            return asset.get("docs", [])
-    raise ValueError(f"System '{system_name}' not found in config.")
-
-
-@app.post("/query")
+@app.post("/query", tags=["Query"])
 def query_system(request: QueryRequest):
+    """
+    Run a RAG query for a specific system and question.
+    """
     try:
-        _ = load_system_config(request.system)
+        logger.info(f"Received query: system={request.system} question={request.question}")
         answer, sources = get_answer(request.system, request.question)
         return {
             "system": request.system,
@@ -38,4 +38,13 @@ def query_system(request: QueryRequest):
             "sources": sources,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error handling query: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+# Optional: serve webapp if directory exists
+if os.path.isdir("webapp"):
+    app.mount("/", StaticFiles(directory="webapp", html=True), name="web")
+
+def start_api_server():
+    import uvicorn
+    uvicorn.run("rag_llm_api_pipeline.api.server:app", host="0.0.0.0", port=8000, reload=True)
