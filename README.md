@@ -20,6 +20,10 @@ A fully  local GPU poor, multimodal Retrieval-Augmented Generation (RAG) system 
 - 🛠️ Asset definition via YAML configuration
 - 🔐 Works in fully local environments after setup
 
+✅ Works locally, GPU/CPU-friendly with configurable precision  
+✅ CLI, API and simple web UI included
+
+
 ---
 
 ## 📦 Installation

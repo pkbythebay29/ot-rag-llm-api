@@ -1,52 +1,51 @@
-# RAG retrieval logic
-import os
-import faiss
-import pickle
+import os, pickle
+from rag_llm_api_pipeline.loader import load_documents
+from rag_llm_api_pipeline.config_loader import load_config
+from rag_llm_api_pipeline.llm_wrapper import ask_llm
+
 from sentence_transformers import SentenceTransformer
-from .loader import load_docs
-from .llm_wrapper import ask_llm
-from .config_loader import load_config
+import faiss
 
+INDEX_DIR = "indices"
 config = load_config()
-embedding_model = SentenceTransformer(config["models"]["embedding_model"])
-INDEX_DIR = config["retriever"]["index_dir"]
-os.makedirs(INDEX_DIR, exist_ok=True)
 
-def build_index(system_name: str, docs: list[str]) -> str:
-    texts = []
-    for doc_path in docs:
-        full_path = os.path.join(config["settings"]["data_dir"], doc_path)
-        texts.extend(load_docs(full_path))
+def build_index(system_name):
+    os.makedirs(INDEX_DIR, exist_ok=True)
+    data_dir = config["settings"]["data_dir"]
+    system = next((a for a in config["assets"] if a["name"] == system_name), None)
+    docs = system.get("docs") if system else None
 
-    embeddings = embedding_model.encode(texts, show_progress_bar=True)
+    if not docs:
+        docs = [f for f in os.listdir(data_dir) if os.path.isfile(os.path.join(data_dir, f))]
+
+    texts = load_documents([os.path.abspath(os.path.join(data_dir, doc)) for doc in docs])
+    embedder = SentenceTransformer(config["retriever"]["embedding_model"])
+    embeddings = embedder.encode(texts)
+
     index = faiss.IndexFlatL2(embeddings.shape[1])
     index.add(embeddings)
+    faiss.write_index(index, os.path.join(INDEX_DIR, f"{system_name}.faiss"))
 
-    index_path = os.path.join(INDEX_DIR, f"{system_name}.faiss")
-    meta_path = os.path.join(INDEX_DIR, f"{system_name}_texts.pkl")
-
-    faiss.write_index(index, index_path)
-    with open(meta_path, "wb") as f:
+    with open(os.path.join(INDEX_DIR, f"{system_name}_texts.pkl"), "wb") as f:
         pickle.dump(texts, f)
 
-    return index_path
-
-def get_answer(system_name: str, question: str) -> tuple[str, list[str]]:
-    index_path = os.path.join(INDEX_DIR, f"{system_name}.faiss")
-    meta_path = os.path.join(INDEX_DIR, f"{system_name}_texts.pkl")
-
-    if not os.path.exists(index_path) or not os.path.exists(meta_path):
-        raise ValueError(f"Index for system '{system_name}' not found. Please build it first.")
-
-    index = faiss.read_index(index_path)
-    with open(meta_path, "rb") as f:
+def get_answer(system_name, question):
+    embedder = SentenceTransformer(config["retriever"]["embedding_model"])
+    index = faiss.read_index(os.path.join(INDEX_DIR, f"{system_name}.faiss"))
+    with open(os.path.join(INDEX_DIR, f"{system_name}_texts.pkl"), "rb") as f:
         texts = pickle.load(f)
 
-    question_embedding = embedding_model.encode([question])
-    D, I = index.search(question_embedding, k=config["retriever"]["top_k"])
-    top_chunks = [texts[i] for i in I[0]]
+    question_vec = embedder.encode([question])
+    D, I = index.search(question_vec, config["retriever"]["top_k"])
+    context = "\n".join([texts[i] for i in I[0]])
+    answer = ask_llm(question, context)
+    return answer, [texts[i] for i in I[0]]
 
-    context = "\n\n".join(top_chunks)
-    answer = ask_llm(question=question, context=context)
-
-    return answer, top_chunks
+def list_indexed_data(system_name):
+    meta_path = os.path.join(INDEX_DIR, f"{system_name}_texts.pkl")
+    if not os.path.exists(meta_path):
+        print(f"No index found for {system_name}")
+        return
+    with open(meta_path, "rb") as f:
+        texts = pickle.load(f)
+    print(f"Indexed {len(texts)} chunks for system: {system_name}")
