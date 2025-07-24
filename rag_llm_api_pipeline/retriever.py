@@ -1,5 +1,5 @@
 import os, pickle
-from rag_llm_api_pipeline.loader import load_documents
+from rag_llm_api_pipeline.loader import load_docs
 from rag_llm_api_pipeline.config_loader import load_config
 from rag_llm_api_pipeline.llm_wrapper import ask_llm
 
