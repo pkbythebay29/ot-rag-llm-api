@@ -101,7 +101,7 @@ python cli/main.py --system Pump_A --question "What is the restart sequence for 
 
 ### API Server
 ```bash
-uvicorn api.server:app --host 0.0.0.0 --port 8000
+uvicorn rag_llm_api_pipeline.api.server:app --host 0.0.0.0 --port 8000
 ```
 
 ### cURL Query
