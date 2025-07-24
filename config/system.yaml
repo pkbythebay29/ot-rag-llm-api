@@ -6,7 +6,7 @@ assets:
 # --- Model Configuration ---
 models:
   embedding_model: sentence-transformers/all-MiniLM-L6-v2
-  llm_model: tiiuae/falcon-1b-instruct  # lightweight GPU-friendly model
+  llm_model: distilbert/distilgpt2   # lightweight GPU-friendly model
 
 # --- FAISS & Retrieval Settings ---
 retriever:

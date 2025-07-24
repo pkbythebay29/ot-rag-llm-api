@@ -60,61 +60,7 @@ pip install -r requirements.txt
 
 ## 🚀 Usage
 
-### CLI Example
-```bash
-python cli/main.py --system Pump_A --question "What is the pressure threshold for operation?"
-```
-
-### API Server
-Start the server:
-```bash
-uvicorn api.server:app --reload
-```
-
-Query with curl or Postman:
-```bash
-curl -X POST http://localhost:8000/query \
-     -H "Content-Type: application/json" \
-     -d '{"system": "Pump_A", "question": "Explain the restart procedure"}'
-```
-
----
-
-## 🧱 Configuration
-
-Edit `config/system.yaml` to define your assets and associated documents:
-
-```yaml
-assets:
-  - name: Pump_A
-    docs:
-      - pump_manual.pdf
-      - safety_guide.mp4
-
-models:
-  embedding_model: sentence-transformers/all-MiniLM-L6-v2
-  llm_model: tiiuae/falcon-7b-instruct
-
-retriever:
-  top_k: 5
-  index_dir: data/indexes
-
-llm:
-  max_new_tokens: 256
-  prompt_template: |
-    Use the following context to answer the question:
-    {context}
-
-    Question: {question}
-    Answer:
-
-settings:
-  data_dir: data/manuals
-  force_rebuild_index: false
-  use_cpu: true
-```
-
-> Documents can be PDFs, plain text, images, or audio/video files.
+Please review the quickstart guide. 
 
 ---
 ## 🐧 Setup Instructions (Linux)
@@ -181,11 +127,9 @@ curl -X POST http://localhost:8000/query \
 
 ## 🧠 Model Info
 
-- Default LLM: `tiiuae/falcon-rw-1b` (run locally via `transformers`)
-- Embedding model: `sentence-transformers/all-MiniLM-L6-v2`
 - All models are open-source and run offline.
 
-> You can replace these with any local-compatible Hugging Face model.
+> You can replace with any local-compatible Hugging Face model.
 
 ---
 
