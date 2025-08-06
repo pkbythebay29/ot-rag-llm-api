@@ -29,30 +29,30 @@ data/manuals/
 Edit config/system.yaml to define your systems:
 
 assets:
-  - name: Pump_A
+  - name: TestSystem
     docs: []   # leave empty to auto-discover all files
 
 🗃️ 3️⃣ Build the index
 
 Run:
 ```
-rag-cli --system Pump_A --build-index
+rag-cli --system TestSystem --build-index
 ```
 This creates a FAISS index in indices/.
 💬 4️⃣ Ask a question
 CLI:
 ```
-rag-cli --system Pump_A --question "How do I restart the pump?"
+rag-cli --system TestSystem --question "How do I restart the pump?"
 ```
 With retrieved chunks:
 ```
-rag-cli --system Pump_A --question "..." --show-chunks
+rag-cli --system TestSystem --question "..." --show-chunks
 ```
 🌐 5️⃣ Run the API server & Web UI
 
 Start the API server:
 ```
-rag-cli --system Pump_A --serve
+rag-cli --system TestSystem --serve
 ```
 ✅ API endpoints:
 
@@ -61,7 +61,7 @@ rag-cli --system Pump_A --serve
     Query: POST /query with JSON:
 
     {
-      "system": "Pump_A",
+      "system": "TestSystem",
       "question": "How do I restart?"
     }
 
@@ -74,15 +74,15 @@ http://localhost:8000/
 
 List indexed data:
 ```
-rag-cli --system Pump_A --list-data
+rag-cli --system TestSystem --list-data
 ```
 Run with CPU:
 ```
-rag-cli --system Pump_A --question "..." --precision fp32
+rag-cli --system TestSystem --question "..." --precision fp32
 ```
 Run with lower precision (GPU-friendly):
 ```
-rag-cli --system Pump_A --precision fp16 --question "..."
+rag-cli --system TestSystem --precision fp16 --question "..."
 ```
 📝 Notes
 
