@@ -1,83 +1,87 @@
-# 🚧 rag-llm-api-pipeline — Roadmap
+
+# ✅ rag-llm-api-pipeline — Roadmap 
 
 ---
 
 ## 🔧 Core Enhancements
 
-- [ ] Automatically respect `force_rebuild_index: true` in YAML to rebuild FAISS index on startup
-- [ ] Add optional batching and token limit controls for long context handling in `llm_wrapper.py`
-- [ ] Add robust error handling and logging for CLI and API endpoints
-- [ ] Support per-system overrides for LLM/embedding model in `system.yaml`
+- [x] Automatically respect `force_rebuild_index: true` in YAML to rebuild FAISS index on startup
+- [x] Add robust error handling and logging for CLI and API endpoints
+- [x] Support per-system overrides for LLM/embedding model in `system.yaml`
+- [x] Support listing indexed chunks (`list_indexed_data`)
+- [ ] Add optional batching and token limit controls for long context handling in `llm_wrapper.py` (P2)
 
 ---
 
 ## 🧠 ML/Model Improvements
 
-- [ ] Add support for quantized models (e.g., GGUF with llama.cpp or ctransformers backend)
-- [ ] Allow configuration of GPU usage per model (e.g., mixed CPU/GPU inference)
-- [ ] Abstract model loading to allow switching between Hugging Face, local `.gguf`, or LoRA adapters
-- [ ] Add offline model caching utility script
+- [x] Add precision configuration via YAML (`fp32`, `fp16`, `bf16`)  
+- [x] Add support for using CPU or GPU via YAML (`use_cpu`)
+- [ ] Abstract model loading to support Hugging Face, OpenAI, or Harmony APIs (flexible backend)
+- [ ] Add support for quantized models (e.g., GGUF with llama.cpp or ctransformers backend) (P2)
+- [ ] Allow per-model GPU/CPU fallback configuration (P2)
+- [ ] Add offline model caching utility script (P3)
 
 ---
 
 ## 🛠️ CLI & API Features
 
-- [ ] Add CLI command to list all indexed systems from YAML
-- [ ] Add CLI to delete/rebuild index on demand
-- [ ] Add API endpoint to trigger index rebuild
-- [ ] Return metadata with API results (source filenames, doc types, etc.)
+- [x] Add CLI command to list all indexed systems and number of chunks
+- [] Add timing metrics to CLI (prints every 10s and total time on answer)
+- [] Return timing and sources metadata with CLI/API result
+- [] Add API timer: time to respond for each query
+- [x] Add optional flags for showing retrieved chunks (`--show-chunks`)
+- [x] Add endpoint & CLI to rebuild index based on YAML
+- [ ] Add richer metadata return (doc types, filenames, size) (P2)
 
 ---
 
 ## 📦 Packaging & Deployment
 
-- [ ] Create a `Dockerfile` for fully portable deployment
-- [ ] Add optional `Makefile` or `build.sh` for local setup/testing
-- [ ] Add GitHub Actions CI/CD for linting, testing, PyPI publishing
+- [x] Update PyPI package with all features
+- [x] Added `quickstart.md` with instructions and pip install
+- [ ] Create a `Dockerfile` for fully portable deployment (P1)
+- [ ] Add `Makefile` or `build.sh` for quick builds (P2)
+- [ ] Add GitHub Actions for tests/lint/CI/CD (P2)
 
 ---
 
 ## 📁 File & Media Support
 
-- [ ] Add YAML support for pre-chunking text (chunk size, overlap)
-- [ ] Add image captioning or tagging (for more than just OCR)
-- [ ] Add speaker diarization for audio and video
-- [ ] Support splitting video into scenes for multi-chunk answers
+- [x] Multimodal loader: supports text, PDF, image (OCR), audio, video
+- [x] Automatically loads all files in `data_dir` if `docs` list is empty
+- [ ] YAML control for chunk size / overlap (P2)
+- [ ] Add image captioning (not just OCR) (P3)
+- [ ] Add speaker diarization for long audio (P3)
+- [ ] Add video scene splitting for long content (P3)
 
 ---
 
 ## 📚 Usability & Documentation
 
-- [ ] Add Swagger/OpenAPI tags and descriptions to FastAPI endpoints
-- [ ] Add examples of `curl`/`Postman` usage for API in README
-- [ ] Add configuration schema validation (e.g., `pydantic` or `Cerberus`)
-- [ ] Provide sample `system.yaml` and test dataset in repo
-- [ ] Add a `quickstart.md` guide
+- [x] `quickstart.md` added to root with steps
+- [x] Improved `README.md` with pip install, API, CLI, website usage
+- [x] Provide sample `system.yaml` and test config in repo
+- [ ] Add Swagger/OpenAPI docs to FastAPI (P2)
+- [ ] Add curl/Postman examples in README (P2)
+- [ ] Add config schema validation via `pydantic` or similar (P2)
 
 ---
 
 ## 🧪 Testing & Observability
 
-- [ ] Add unit tests for `loader.py` multimodal coverage
-- [ ] Add integration tests for end-to-end query flow
-- [ ] Add CLI test coverage via `subprocess` or `click.testing`
-- [ ] Add telemetry hooks (opt-in) for usage analytics in enterprise deployments
+- [ ] Add unit tests for `loader.py` multimodal formats (P1)
+- [ ] Add CLI test coverage using `subprocess` or `click.testing` (P1)
+- [ ] Add integration tests for API + CLI + index + LLM (P1)
+- [ ] Add opt-in telemetry/analytics for usage stats (P3)
 
 ---
 
-## 🤝 Community & Feedback
+## 🖥️ Web UI
 
-- [ ] Add issue templates and contribution guide
-- [ ] Add roadmap visualization (e.g., GitHub Projects or Notion)
-- [ ] Create discussions board or feedback form
-
----
-
-## 🪜 Priority Levels
-
-- [P1] Must-have for robustness or first release polish  
-- [P2] Nice-to-have, improves usability or flexibility  
-- [P3] Exploratory or longer-term enhancements
-
----
+- [x] Added minimal HTML/JS web UI (`index.html`)
+- [x] Hooks into FastAPI backend
+- [x] Displays answer, chunks, on screen
+- [ ] Add copy-to-clipboard or export button (P3)
+- [ ] Improve styling and branding (P2)
 
