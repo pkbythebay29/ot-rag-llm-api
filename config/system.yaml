@@ -1,22 +1,27 @@
 # --- System & Data Configuration ---
 assets:
-  - name: Pump_A
-    docs: []  # leave empty to auto-discover all files in data_dir
+  - name: TestSystem
+    docs: []  # Auto-discover supported files from settings.data_dir
 
 # --- Model Configuration ---
 models:
-  embedding_model: sentence-transformers/all-MiniLM-L6-v2
-  llm_model: distilbert/distilgpt2   # lightweight GPU-friendly model
+  #embedding_model: sentence-transformers/all-MiniLM-L6-v2
+  llm_model: Qwen/Qwen3-4B-Instruct-2507          # Replace with any HuggingFace model
+  device: auto                              # auto | cpu | cuda
+  model_precision: auto                     # auto | fp16 | bfloat16 | fp32
+  memory_strategy:
+    use_expandable_segments: true           # Prevents fragmentation
+    max_memory_gb: null                     # Optional (e.g. 20); null = let pipeline decide
 
 # --- FAISS & Retrieval Settings ---
 retriever:
-  top_k: 5                   # number of chunks to retrieve
-  index_dir: data/indexes    # where to store FAISS indices
+  embedding_model: sentence-transformers/all-MiniLM-L6-v2
+  top_k: 5
+  index_dir: data/indexes
 
 # --- LLM Prompt & Inference Settings ---
 llm:
   max_new_tokens: 256
-  precision: fp16            # choose: fp32 (default), fp16, bfloat16
   prompt_template: |
     You are an assistant for technical troubleshooting.
 
@@ -28,6 +33,6 @@ llm:
 
 # --- General Behavior ---
 settings:
-  force_rebuild_index: false   # Set true to always rebuild FAISS index
-  data_dir: data/manuals       # Base path for all documents
-  use_cpu: false               # Set to true to force CPU even if GPU is available
+  force_rebuild_index: false
+  data_dir: data/manuals
+  show_chunks: false
