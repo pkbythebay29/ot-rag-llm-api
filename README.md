@@ -9,51 +9,35 @@ A fully  local GPU poor, multimodal Retrieval-Augmented Generation (RAG) system 
     🔍 Retrieval-Augmented Generation (RAG) using FAISS + SentenceTransformers
 
     🧠 Flexible LLM Integration with support for:
-
-        Open-source HuggingFace models (Qwen, Mistral, etc.)
-
-        Mixed precision support: fp32, fp16, bfloat16
-
-        Dynamic model/device/precision switching via YAML
+	- Open-source HuggingFace models (Qwen, Mistral, etc.)
+	- Mixed precision support: fp32, fp16, bfloat16
+	- Dynamic model/device/precision switching via YAML
 
     🔧 1-line YAML configuration to control:
-
-        System-specific documents
-
-        Embedding & generation models
-
-        GPU/CPU inference toggle
-
-        Index rebuilding, token limits, chunking
-
+    - System-specific documents
+    - Embedding & generation models
+    - GPU/CPU inference toggle
+    - Index rebuilding, token limits, chunking
+		
     📂 Multimodal Input Support:
-
-        PDFs
-
-        Plain text
-
-        Images (OCR via Tesseract)
-
-        Audio (.wav, .flac, .aiff)
-
-        Video (.mp4 with automatic scene/audio splitting)
-
+    - PDFs
+    - Plain text
+    - Images (OCR via Tesseract)
+    - Audio (.wav)
+    - Video (.mp4)
+		
     💻 Multiple Interfaces:
+   - CLI (rag-cli) for single-line querying
+   - FastAPI-powered REST API for local serving
+   - Lightweight HTML Web UI for interactive search
 
-        CLI (rag-cli) for single-line querying
+###🛠️ Per-system configuration via system.yaml for flexible deployments
+###🔐 Fully local operation — no cloud dependencies required
 
-        FastAPI-powered REST API for local serving
-
-        Lightweight HTML Web UI for interactive search
-
-    🛠️ Per-system configuration via system.yaml for flexible deployments
-
-    🔐 Fully local operation — no cloud dependencies required
-
-✅ One-line install via pip install rag-llm-api-pipeline
-✅ Quickstart guide and prebuilt example included
-✅ Runs on CPU or GPU with smart memory management
-✅ Web UI + CLI + API, all in one package
+###✅ One-line install via pip install rag-llm-api-pipeline
+###✅ Quickstart guide and prebuilt example included
+###✅ Runs on CPU or GPU with smart memory management
+###✅ Web UI + CLI + API, all in one package
 
 ---
 
