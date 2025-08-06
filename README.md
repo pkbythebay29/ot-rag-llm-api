@@ -4,25 +4,56 @@ A fully  local GPU poor, multimodal Retrieval-Augmented Generation (RAG) system 
 
 ---
 
-## ✅ Key Features
+✅ Key Features
 
-- 🔍 Retrieval-Augmented Generation (RAG) using FAISS + SentenceTransformers
-- 🧠 Query handling via a local, open-source Large Language Model (LLM)
-- 📄 Supports multiple input formats:
-  - PDFs
-  - Plain text files
-  - Images (OCR via Tesseract)
-  - Audio files (`.wav`, `.flac`, `.aiff`)
-  - Videos (`.mp4` with audio extraction)
-- 💻 Interfaces:
-  - Command Line Interface (CLI)
-  - Local REST API (FastAPI)
-- 🛠️ Asset definition via YAML configuration
-- 🔐 Works in fully local environments after setup
+    🔍 Retrieval-Augmented Generation (RAG) using FAISS + SentenceTransformers
 
-✅ Works locally, GPU/CPU-friendly with configurable precision  
-✅ CLI, API and simple web UI included
+    🧠 Flexible LLM Integration with support for:
 
+        Open-source HuggingFace models (Qwen, Mistral, etc.)
+
+        Mixed precision support: fp32, fp16, bfloat16
+
+        Dynamic model/device/precision switching via YAML
+
+    🔧 1-line YAML configuration to control:
+
+        System-specific documents
+
+        Embedding & generation models
+
+        GPU/CPU inference toggle
+
+        Index rebuilding, token limits, chunking
+
+    📂 Multimodal Input Support:
+
+        PDFs
+
+        Plain text
+
+        Images (OCR via Tesseract)
+
+        Audio (.wav, .flac, .aiff)
+
+        Video (.mp4 with automatic scene/audio splitting)
+
+    💻 Multiple Interfaces:
+
+        CLI (rag-cli) for single-line querying
+
+        FastAPI-powered REST API for local serving
+
+        Lightweight HTML Web UI for interactive search
+
+    🛠️ Per-system configuration via system.yaml for flexible deployments
+
+    🔐 Fully local operation — no cloud dependencies required
+
+✅ One-line install via pip install rag-llm-api-pipeline
+✅ Quickstart guide and prebuilt example included
+✅ Runs on CPU or GPU with smart memory management
+✅ Web UI + CLI + API, all in one package
 
 ---
 
@@ -96,7 +127,7 @@ pip install -r requirements.txt
 
 ### CLI
 ```bash
-python cli/main.py --system Pump_A --question "What is the restart sequence for this machine?"
+python cli/main.py --system TestSystem --question "What is the restart sequence for this machine?"
 ```
 
 ### API Server
@@ -108,7 +139,7 @@ uvicorn rag_llm_api_pipeline.api.server:app --host 0.0.0.0 --port 8000
 ```bash
 curl -X POST http://localhost:8000/query \
      -H "Content-Type: application/json" \
-     -d '{"system": "Pump_A", "question": "What does error E204 indicate?"}'
+     -d '{"system": "TestSystem", "question": "What does error E204 indicate?"}'
 ```
 
 ## 📚 How it Works
