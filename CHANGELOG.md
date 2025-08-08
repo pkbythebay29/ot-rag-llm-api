@@ -5,6 +5,52 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+
+## [0.5.0] - 2025-08-08
+### Added
+- **Telemetry toggles in YAML**:  
+  `settings.show_query_time`, `settings.show_token_speed`, `settings.show_chunk_timing`.
+- **Token speed & latency** across CLI/API/Web:  
+  Tokens/sec, gen token count, generation time, total query time.
+- **Chunk-level timing**:
+  - Query: embed time, FAISS search time, context stitching time.
+  - Index build: per-file load/parse timing, batched embedding time, FAISS write time.
+- **Minimal web UI refresh**:
+  - Centered card layout, system fonts, subtle 3-dot “Thinking…” animation.  
+  - Enter-to-submit, stats panel, retrieved chunk metadata.
+- **Harmony (OpenAI gpt-oss) optional path**:  
+  `models.use_harmony: true` + prompt rendering via Harmony when using openai/gpt-oss models.
+- **Memory/allocator knobs** in YAML (`models.memory_strategy`):
+  - `use_expandable_segments` → sets `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`.
+  - `max_memory_gb` (optional cap).
+- **Embedding batching** control for both build + query: `retriever.encode_batch_size`.
+- **CLI**: periodic 10-second ticker while a query is running.
+
+### Changed
+- **Default LLM** → `Qwen/Qwen3-4B-Instruct-2507` (quality/VRAM sweet spot).
+- **Embedding model moved under `retriever`** (fixes earlier ValueError when reading config).
+- **Device handling**:
+  - HF pipeline now receives a numeric device index (`-1` CPU / `0` GPU).
+  - GPU uses `device_map="auto"`, CPU uses `device_map=None`, preventing `accelerate` device type errors.
+- **Anti-repetition defaults** in YAML: `repetition_penalty: 1.05`, `no_repeat_ngram_size: 4`, `return_full_text=False`.
+
+### Fixed
+- Frequent **“device must be an int / accelerate device”** errors by standardizing device selection and pipeline args.
+- Reduced **output loops/echoing prompts** via repetition penalties + no-repeat n-gram + prompt guardrails.
+
+### Docs
+- Updated `README.md` with:
+  - New **system.yaml** layout and parameter explanations.
+  - How to toggle telemetry + memory behavior.
+  - Notes on Harmony usage and model switching.
+
+### Migration notes
+- Move your embedding model to:
+  ```yaml
+  retriever:
+    embedding_model: sentence-transformers/all-MiniLM-L6-v2
+
+
 ## [0.2.0] - 2025-07-22
 
 ### ✨ Added

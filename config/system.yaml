@@ -1,38 +1,69 @@
-# --- System & Data Configuration ---
+# ===============================
+# rag-llm-api-pipeline — system.yaml
+# ===============================
+
+# --- Systems & Data (what you want to query) ---
 assets:
   - name: TestSystem
-    docs: []  # Auto-discover supported files from settings.data_dir
+    docs: []                 # Leave empty to auto-discover all supported files from settings.data_dir
 
-# --- Model Configuration ---
+# --- Generation model (LLM) ---
 models:
-  #embedding_model: sentence-transformers/all-MiniLM-L6-v2
-  llm_model: Qwen/Qwen3-4B-Instruct-2507          # Replace with any HuggingFace model
-  device: auto                              # auto | cpu | cuda
-  model_precision: auto                     # auto | fp16 | bfloat16 | fp32
+  llm_model: Qwen/Qwen3-4B-Instruct-2507   # Default LLM (great quality vs VRAM balance)
+  device: auto                          # auto | cpu | cuda
+  model_precision: auto                 # auto | fp32 | fp16 | bf16
+  use_harmony: false                    # true only for OpenAI gpt-oss models (Harmony format)
+
+  # Memory/allocator hints (helps avoid CUDA fragmentation / OOM)
   memory_strategy:
-    use_expandable_segments: true           # Prevents fragmentation
-    max_memory_gb: null                     # Optional (e.g. 20); null = let pipeline decide
+    use_expandable_segments: true       # sets PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+    max_memory_gb: null                 # e.g., 18 to cap VRAM usage; null = let HF decide
 
-# --- FAISS & Retrieval Settings ---
+# --- Retrieval (embeddings + FAISS) ---
 retriever:
-  embedding_model: sentence-transformers/all-MiniLM-L6-v2
-  top_k: 5
-  index_dir: data/indexes
+  embedding_model: sentence-transformers/all-MiniLM-L6-v2   # moved here to fix earlier value error
+  top_k: 5                                                  # number of chunks to retrieve
+  index_dir: indices                                        # where FAISS files & text pickle live
+  encode_batch_size: 32                                     # batching for embeddings (build & query)
 
-# --- LLM Prompt & Inference Settings ---
+# --- LLM prompt & generation controls ---
 llm:
   max_new_tokens: 256
+  max_input_tokens: 3072           # guard-rail to keep prompt within model context window
+  temperature: 0.1                 # lower = more deterministic (good for RAG/QA)
+  top_p: 0.9
+  repetition_penalty: 1.05         # discourages token reuse; 1.05–1.15 is typical
+  no_repeat_ngram_size: 4          # forbids repeating 4-grams
+  stop_sequences: []               # optional list of hard stops, e.g. ["\n\nUser:", "Answer:"]
   prompt_template: |
-    You are an assistant for technical troubleshooting.
+    You are a helpful assistant for industrial systems.
 
-    Use the following context to answer the question:
+    Use ONLY the provided context to answer. If the answer is not in the context,
+    say "I don't know."
+
+    Context:
     {context}
 
     Question: {question}
     Answer:
 
-# --- General Behavior ---
+# --- Global behavior & telemetry toggles ---
 settings:
-  force_rebuild_index: false
-  data_dir: data/manuals
-  show_chunks: false
+  data_dir: data/manuals            # root folder for your manuals (PDF, TXT, images, audio, video)
+  index_dir: indices                # optional global alias (retriever.index_dir is the one used)
+  force_rebuild_index: false        # rebuild FAISS on next run
+  use_cpu: false                    # force CPU even if a GPU exists
+
+  # UI/CLI/API telemetry
+  show_chunks: true                # include retrieved chunks in responses
+  show_query_time: true             # include total query latency
+  show_token_speed: true            # include tokens/sec + gen token count/time
+  show_chunk_timing: true           # include retrieval timings & per-chunk metadata
+
+# --- (Optional) OpenAI/gpt-oss/Harmony wiring hints ---
+# If you switch to an OpenAI gpt-oss model, set:
+# models:
+#   llm_model: openai/gpt-oss-7b
+#   use_harmony: true
+# (Everything else can remain the same.)
+
