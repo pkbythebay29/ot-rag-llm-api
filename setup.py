@@ -5,13 +5,11 @@ with open("README.md", encoding="utf-8") as f:
 
 with open("requirements.txt", encoding="utf-8") as f:
     install_requires = f.read().splitlines()
-    
-with open("CHANGELOG.md", encoding="utf-8") as f:
-    install_requires = f.read().splitlines()
+
 
 setup(
     name="rag-llm-api-pipeline",
-    version="0.4.0",
+    version="0.5.0",
     author="pkbythebay29",
     author_email="kannan@haztechrisk.org",
     description="Multimodal RAG pipeline for low-compute, local, real-world deployment",
