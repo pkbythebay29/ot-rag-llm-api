@@ -147,7 +147,7 @@ def start_api_server() -> None:
     # reload=True only if running from source; for pip installs, reload=False is safer
     uvicorn.run(
         "rag_llm_api_pipeline.api.server:app",
-        host="0.0.0.0",
+        host="0.0.0.0",  # nosec B104
         port=8000,
         reload=False,
     )

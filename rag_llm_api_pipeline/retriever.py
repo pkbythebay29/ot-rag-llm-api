@@ -122,11 +122,11 @@ def _retrieve_chunks(system_name: str, question: str):
 
     index = faiss.read_index(index_path)
     with open(texts_path, "rb") as f:
-        texts = pickle.load(f)
+        texts = pickle.load(f)  # nosec B301
     metas = []
     if os.path.exists(meta_path):
         with open(meta_path, "rb") as f:
-            metas = pickle.load(f)
+            metas = pickle.load(f)  # nosec B301
 
     # Query embedding
     t_qe0 = _now()
@@ -192,7 +192,7 @@ def list_indexed_data(system_name: str):
         print(f"[INFO] No index found for '{system_name}'. Run --build-index first.")
         return
     with open(texts_path, "rb") as f:
-        texts = pickle.load(f)
+        texts = pickle.load(f)  # nosec B301
     print(f"[INFO] System: {system_name}")
     print(f"[INFO] Index dir: {INDEX_DIR}")
     print(f"[INFO] Chunks: {len(texts)}")

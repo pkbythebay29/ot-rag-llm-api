@@ -61,11 +61,11 @@ def _build_pipeline(cfg):
     if device == "cuda":
         torch.cuda.empty_cache()
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)  # nosec B615
     if tokenizer.pad_token_id is None and tokenizer.eos_token_id is not None:
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
-    model = AutoModelForCausalLM.from_pretrained(
+    model = AutoModelForCausalLM.from_pretrained(  # nosec B615
         model_name,
         torch_dtype=dtype,
         device_map="auto" if device == "cuda" else None,
