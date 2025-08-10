@@ -1,7 +1,6 @@
 import os
 import logging
-from typing import Optional
-from typing import Union
+from typing import Any, Optional, Union
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -13,17 +12,28 @@ from rag_llm_api_pipeline.config_loader import load_config
 import uvicorn
 
 """
-FastAPI server for RAG LLM API Pipeline (reconciled)
+FastAPI server for RAG LLM API Pipeline
 - Serves web UI (from CWD/webapp or fallbacks)
 - /health and /query endpoints
 - Optional stats in response (controlled via YAML)
 """
 
+# --- Type alias for JSON-friendly data ---
+JSONValue = Union[
+    str,
+    int,
+    float,
+    bool,
+    None,
+    dict[str, "JSONValue"],
+    list["JSONValue"],
+]
 
 app = FastAPI(title="RAG LLM API Pipeline")
 
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -34,13 +44,13 @@ class QueryRequest(BaseModel):
 
 
 @app.get("/health", tags=["Health"])
-def health():
+def health() -> dict[str, str]:
     logger.info("Health check called")
     return {"status": "ok"}
 
 
 @app.post("/query", tags=["Query"])
-def query_system(request: QueryRequest):
+def query_system(request: QueryRequest) -> dict[str, JSONValue] | JSONResponse:
     cfg = load_config()
     show_qt = cfg.get("settings", {}).get("show_query_time", True)
     show_ts = cfg.get("settings", {}).get("show_token_speed", True)
@@ -48,14 +58,16 @@ def query_system(request: QueryRequest):
 
     try:
         logger.info(
-            f"Received query: system='{request.system}', question='{request.question}'"
+            "Received query: system='%s', question='%s'",
+            request.system,
+            request.question,
         )
         out = get_answer(request.system, request.question)
 
         # Unpack (answer, chunks, stats) with back-compat
         answer: Optional[str] = None
-        sources = []
-        stats = {}
+        sources: list[Any] = []
+        stats: dict[str, Any] = {}
         if isinstance(out, tuple):
             if len(out) >= 2:
                 answer, sources = out[0], out[1]
@@ -63,10 +75,6 @@ def query_system(request: QueryRequest):
                 stats = out[2]
         else:
             answer = str(out)
-
-        JSONValue = Union[
-            str, int, float, bool, None, dict[str, "JSONValue"], list["JSONValue"]
-        ]
 
         resp: dict[str, JSONValue] = {
             "system": request.system,
@@ -76,7 +84,7 @@ def query_system(request: QueryRequest):
         }
 
         if isinstance(stats, dict) and (show_qt or show_ts or show_ct):
-            s = {}
+            s: dict[str, Any] = {}
             if show_qt and "query_time_sec" in stats:
                 s["query_time_sec"] = stats["query_time_sec"]
             if show_ts and "tokens_per_sec" in stats:
@@ -100,34 +108,34 @@ def query_system(request: QueryRequest):
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
-def _mount_web(app: FastAPI):
+def _mount_web(app_: FastAPI) -> None:
     env_dir = os.environ.get("RAG_WEB_DIR")
     if env_dir and os.path.isdir(env_dir):
-        logger.info(f"Mounting webapp from env RAG_WEB_DIR: {env_dir}")
-        app.mount("/", StaticFiles(directory=env_dir, html=True), name="web")
+        logger.info("Mounting webapp from env RAG_WEB_DIR: %s", env_dir)
+        app_.mount("/", StaticFiles(directory=env_dir, html=True), name="web")
         return
 
     cwd_webapp = os.path.abspath(os.path.join(os.getcwd(), "webapp"))
     if os.path.isdir(cwd_webapp):
-        logger.info(f"Mounting webapp from working dir: {cwd_webapp}")
-        app.mount("/", StaticFiles(directory=cwd_webapp, html=True), name="web")
+        logger.info("Mounting webapp from working dir: %s", cwd_webapp)
+        app_.mount("/", StaticFiles(directory=cwd_webapp, html=True), name="web")
         return
 
     cwd_web = os.path.abspath(os.path.join(os.getcwd(), "web"))
     if os.path.isdir(cwd_web):
-        logger.info(f"Mounting webapp from working dir: {cwd_web}")
-        app.mount("/", StaticFiles(directory=cwd_web, html=True), name="web")
+        logger.info("Mounting webapp from working dir: %s", cwd_web)
+        app_.mount("/", StaticFiles(directory=cwd_web, html=True), name="web")
         return
 
-    # packaged fallback (optional if shipped)
     pkg_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "web"))
     if os.path.isdir(pkg_dir):
-        logger.info(f"Mounting packaged webapp: {pkg_dir}")
-        app.mount("/", StaticFiles(directory=pkg_dir, html=True), name="web")
+        logger.info("Mounting packaged webapp: %s", pkg_dir)
+        app_.mount("/", StaticFiles(directory=pkg_dir, html=True), name="web")
         return
 
     logger.warning(
-        "No web UI directory found (RAG_WEB_DIR /webapp /web or packaged). API still available at /query."
+        "No web UI directory found (RAG_WEB_DIR /webapp /web or packaged). "
+        "API still available at /query."
     )
 
 
@@ -135,8 +143,11 @@ _mount_web(app)
 
 
 # --- Programmatic Uvicorn runner ---
-def start_api_server():
-    # reload=True only if you’re running from source; for pip installs, reload=False is safer
+def start_api_server() -> None:
+    # reload=True only if running from source; for pip installs, reload=False is safer
     uvicorn.run(
-        "rag_llm_api_pipeline.api.server:app", host="0.0.0.0", port=8000, reload=False
+        "rag_llm_api_pipeline.api.server:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=False,
     )
