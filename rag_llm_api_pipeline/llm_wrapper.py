@@ -40,7 +40,9 @@ def _select_dtype(cfg, device):
 
 
 def _maybe_set_allocator(cfg, device):
-    if device == "cuda" and cfg["models"].get("memory_strategy", {}).get("use_expandable_segments", True):
+    if device == "cuda" and cfg["models"].get("memory_strategy", {}).get(
+        "use_expandable_segments", True
+    ):
         os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
 
@@ -112,18 +114,25 @@ def ask_llm(question: str, context: str):
     # Harmony path (for openai/gpt-oss family)
     if use_harmony:
         from openai_harmony import (
-            load_harmony_encoding, HarmonyEncodingName,
-            Conversation, Message, Role, SystemContent, DeveloperContent
+            load_harmony_encoding,
+            HarmonyEncodingName,
+            Conversation,
+            Message,
+            Role,
+            SystemContent,
+            DeveloperContent,
         )
+
         enc = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)
-        convo = Conversation.from_messages([
-            Message.from_role_and_content(Role.SYSTEM, SystemContent.new()),
-            Message.from_role_and_content(
-                Role.DEVELOPER,
-                DeveloperContent.new().with_instructions(prompt)
-            ),
-            Message.from_role_and_content(Role.USER, question),
-        ])
+        convo = Conversation.from_messages(
+            [
+                Message.from_role_and_content(Role.SYSTEM, SystemContent.new()),
+                Message.from_role_and_content(
+                    Role.DEVELOPER, DeveloperContent.new().with_instructions(prompt)
+                ),
+                Message.from_role_and_content(Role.USER, question),
+            ]
+        )
         prefill_ids = enc.render_conversation_for_completion(convo, Role.ASSISTANT)
 
         t0 = time.perf_counter()
@@ -132,13 +141,19 @@ def ask_llm(question: str, context: str):
             input_ids = torch.tensor([prefill_ids], device=device)
             out = pipe.model.generate(
                 input_ids=input_ids,
-                **{k: v for k, v in gen_kwargs.items() if k not in ["return_full_text", "stop"]}
+                **{
+                    k: v
+                    for k, v in gen_kwargs.items()
+                    if k not in ["return_full_text", "stop"]
+                },
             )
         t1 = time.perf_counter()
 
-        completion = out[0].tolist()[len(prefill_ids):]
+        completion = out[0].tolist()[len(prefill_ids) :]
         msgs = enc.parse_messages_from_completion_tokens(completion, Role.ASSISTANT)
-        text = next((m.content for m in reversed(msgs) if m.role == Role.ASSISTANT), "").strip()
+        text = next(
+            (m.content for m in reversed(msgs) if m.role == Role.ASSISTANT), ""
+        ).strip()
 
         gen_tokens = len(tok.encode(text)) if text else 0
         gen_time = max(t1 - t0, 1e-9)

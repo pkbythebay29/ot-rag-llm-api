@@ -37,7 +37,9 @@ def build_index(system_name: str) -> Dict[str, Any]:
     system = next((a for a in config["assets"] if a["name"] == system_name), None)
     docs = system.get("docs", []) if system else []
     if not docs:
-        docs = [f for f in os.listdir(data_dir) if os.path.isfile(os.path.join(data_dir, f))]
+        docs = [
+            f for f in os.listdir(data_dir) if os.path.isfile(os.path.join(data_dir, f))
+        ]
         print(f"[INFO] Auto-discovered {len(docs)} documents in {data_dir}")
 
     timings = {"load_parse": []}
@@ -54,10 +56,14 @@ def build_index(system_name: str) -> Dict[str, Any]:
             texts.extend(parts)
             metas.extend([{"file": doc}] * len(parts))  # persist filename per chunk
             sec = _now() - t0
-            timings["load_parse"].append({"file": doc, "chunks": len(parts), "sec": round(sec, 4)})
+            timings["load_parse"].append(
+                {"file": doc, "chunks": len(parts), "sec": round(sec, 4)}
+            )
         except Exception as e:
             print(f"[WARN] Skipping '{doc}': {e}")
-            timings["load_parse"].append({"file": doc, "chunks": 0, "sec": 0.0, "error": str(e)})
+            timings["load_parse"].append(
+                {"file": doc, "chunks": 0, "sec": 0.0, "error": str(e)}
+            )
 
     if not texts:
         print("[ERROR] No text loaded from documents. Aborting index build.")
@@ -68,10 +74,11 @@ def build_index(system_name: str) -> Dict[str, Any]:
     embedder = SentenceTransformer(embedding_model)
 
     import numpy as np
+
     t_emb0 = _now()
     batches = []
     for i in range(0, len(texts), batch_size):
-        batches.append(embedder.encode(texts[i:i + batch_size]))
+        batches.append(embedder.encode(texts[i : i + batch_size]))
     embeddings = np.vstack(batches)
     t_emb1 = _now()
 
@@ -93,8 +100,10 @@ def build_index(system_name: str) -> Dict[str, Any]:
         "num_chunks": len(texts),
         "index_write_sec": round(t_w1 - t_w0, 4),
     }
-    print(f"[SUCCESS] Index built for '{system_name}' with {len(texts)} chunks "
-          f"in {report['total_sec']}s (embed {report['embed_sec']}s).")
+    print(
+        f"[SUCCESS] Index built for '{system_name}' with {len(texts)} chunks "
+        f"in {report['total_sec']}s (embed {report['embed_sec']}s)."
+    )
     return report
 
 

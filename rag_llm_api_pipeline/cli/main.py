@@ -44,11 +44,19 @@ def main():
     parser.add_argument("--build-index", action="store_true", help="Build index")
     parser.add_argument("--serve", action="store_true", help="Run API server")
     parser.add_argument("--list-data", action="store_true", help="List indexed data")
-    parser.add_argument("--precision", choices=["fp32", "fp16", "bfloat16", "bf16"],
-                        help="Override model precision (persisted to config/system.yaml)")
-    parser.add_argument("--hide-sources", action="store_true",
-                        help="Hide printing retrieved source chunks")
-    parser.add_argument("--no-ticker", action="store_true", help="Disable 10s progress ticker")
+    parser.add_argument(
+        "--precision",
+        choices=["fp32", "fp16", "bfloat16", "bf16"],
+        help="Override model precision (persisted to config/system.yaml)",
+    )
+    parser.add_argument(
+        "--hide-sources",
+        action="store_true",
+        help="Hide printing retrieved source chunks",
+    )
+    parser.add_argument(
+        "--no-ticker", action="store_true", help="Disable 10s progress ticker"
+    )
     args = parser.parse_args()
 
     cfg = load_config()
@@ -68,7 +76,7 @@ def main():
                 if report.get("load_parse"):
                     print("  load_parse per file:")
                     for it in report["load_parse"]:
-                        base = f"    - {it.get('file','?')}: {it.get('chunks',0)} chunks, {it.get('sec',0)}s"
+                        base = f"    - {it.get('file', '?')}: {it.get('chunks', 0)} chunks, {it.get('sec', 0)}s"
                         if it.get("error"):
                             base += f" (ERROR: {it['error']})"
                         print(base)
@@ -89,10 +97,17 @@ def main():
         try:
             try:
                 from rag_llm_api_pipeline.api.server import start_api_server
+
                 start_api_server()
             except ImportError:
                 import uvicorn
-                uvicorn.run("rag_llm_api_pipeline.api.server:app", host="0.0.0.0", port=8000, reload=False)
+
+                uvicorn.run(
+                    "rag_llm_api_pipeline.api.server:app",
+                    host="0.0.0.0",
+                    port=8000,
+                    reload=False,
+                )
         except Exception as e:
             print(f"[ERROR] serve failed: {e}")
             sys.exit(1)
@@ -139,8 +154,8 @@ def main():
         if show_ct and "retrieval" in stats:
             r = stats["retrieval"]
             parts.append(
-                f"Retrieval: embed={r.get('embed_query_sec','?')}s, "
-                f"search={r.get('faiss_search_sec','?')}s, stitch={r.get('context_stitch_sec','?')}s"
+                f"Retrieval: embed={r.get('embed_query_sec', '?')}s, "
+                f"search={r.get('faiss_search_sec', '?')}s, stitch={r.get('context_stitch_sec', '?')}s"
             )
         if parts:
             print("[Stats] " + " | ".join(parts))

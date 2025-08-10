@@ -1,4 +1,3 @@
-
 import os
 import logging
 from typing import Optional
@@ -23,7 +22,9 @@ FastAPI server for RAG LLM API Pipeline (reconciled)
 
 app = FastAPI(title="RAG LLM API Pipeline")
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -46,7 +47,9 @@ def query_system(request: QueryRequest):
     show_ct = cfg.get("settings", {}).get("show_chunk_timing", True)
 
     try:
-        logger.info(f"Received query: system='{request.system}', question='{request.question}'")
+        logger.info(
+            f"Received query: system='{request.system}', question='{request.question}'"
+        )
         out = get_answer(request.system, request.question)
 
         # Unpack (answer, chunks, stats) with back-compat
@@ -73,11 +76,13 @@ def query_system(request: QueryRequest):
             if show_qt and "query_time_sec" in stats:
                 s["query_time_sec"] = stats["query_time_sec"]
             if show_ts and "tokens_per_sec" in stats:
-                s.update({
-                    "gen_time_sec": stats.get("gen_time_sec"),
-                    "gen_tokens": stats.get("gen_tokens"),
-                    "tokens_per_sec": stats.get("tokens_per_sec"),
-                })
+                s.update(
+                    {
+                        "gen_time_sec": stats.get("gen_time_sec"),
+                        "gen_tokens": stats.get("gen_tokens"),
+                        "tokens_per_sec": stats.get("tokens_per_sec"),
+                    }
+                )
             if show_ct and "retrieval" in stats:
                 s["retrieval"] = stats.get("retrieval", {})
                 s["chunks_meta"] = stats.get("chunks_meta", [])
@@ -117,7 +122,9 @@ def _mount_web(app: FastAPI):
         app.mount("/", StaticFiles(directory=pkg_dir, html=True), name="web")
         return
 
-    logger.warning("No web UI directory found (RAG_WEB_DIR /webapp /web or packaged). API still available at /query.")
+    logger.warning(
+        "No web UI directory found (RAG_WEB_DIR /webapp /web or packaged). API still available at /query."
+    )
 
 
 _mount_web(app)
@@ -125,6 +132,7 @@ _mount_web(app)
 
 # --- Programmatic Uvicorn runner ---
 def start_api_server():
-    
     # reload=True only if you’re running from source; for pip installs, reload=False is safer
-    uvicorn.run("rag_llm_api_pipeline.api.server:app", host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run(
+        "rag_llm_api_pipeline.api.server:app", host="0.0.0.0", port=8000, reload=False
+    )

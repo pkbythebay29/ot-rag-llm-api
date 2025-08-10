@@ -12,6 +12,7 @@ SUPPORTED_IMG = [".jpg", ".jpeg", ".png"]
 SUPPORTED_AUDIO = [".wav", ".flac"]
 SUPPORTED_VIDEO = [".mp4"]
 
+
 def load_docs(path: str, ocr_lang: str = "eng") -> list[str]:
     path = os.path.abspath(path)
     ext = os.path.splitext(path)[-1].lower()
