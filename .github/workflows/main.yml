@@ -1,7 +1,5 @@
 name: RAG LLM Pipeline CI
 
-name: CI (lint & security)
-
 on:
   push:
     branches: [main]
