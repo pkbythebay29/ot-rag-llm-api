@@ -42,7 +42,7 @@ def build_index(system_name: str) -> Dict[str, Any]:
         ]
         print(f"[INFO] Auto-discovered {len(docs)} documents in {data_dir}")
 
-    timings = {"load_parse": []}
+    timings: dict[str, list[Any]] = {"load_parse": []}
     t_total0 = _now()
 
     texts: List[str] = []

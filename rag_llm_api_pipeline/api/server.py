@@ -1,7 +1,7 @@
 import os
 import logging
 from typing import Optional
-
+from typing import Union
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -63,8 +63,10 @@ def query_system(request: QueryRequest):
                 stats = out[2]
         else:
             answer = str(out)
-
-        resp = {
+            
+        JSONValue = Union[str, int, float, bool, None, dict[str, "JSONValue"], list["JSONValue"]]
+        
+        resp: dict[str, JSONValue] = {
             "system": request.system,
             "question": request.question,
             "answer": answer,
