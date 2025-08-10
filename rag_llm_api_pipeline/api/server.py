@@ -21,6 +21,8 @@ from pydantic import BaseModel
 from rag_llm_api_pipeline.retriever import get_answer
 from rag_llm_api_pipeline.config_loader import load_config
 
+import uvicorn
+
 app = FastAPI(title="RAG LLM API Pipeline")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -123,12 +125,8 @@ def _mount_web(app: FastAPI):
 _mount_web(app)
 
 
-def start_api_server():
-    import uvicorn
-    uvicorn.run("rag_llm_api_pipeline.api.server:app", host="0.0.0.0", port=8000, reload=False)
-
 # --- Programmatic Uvicorn runner ---
 def start_api_server():
-    import uvicorn
+    
     # reload=True only if you’re running from source; for pip installs, reload=False is safer
     uvicorn.run("rag_llm_api_pipeline.api.server:app", host="0.0.0.0", port=8000, reload=False)
