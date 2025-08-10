@@ -6,6 +6,7 @@ include requirements.txt
 recursive-include rag_llm_api_pipeline/api *.py
 recursive-include rag_llm_api_pipeline/cli *.py
 recursive-include rag_llm_api_pipeline *.py
+recursive-include rag_llm_api_pipeline/web *.html
 
 recursive-include config *.yaml
 recursive-include data/manuals *

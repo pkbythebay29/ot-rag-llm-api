@@ -6,6 +6,21 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 ---
 
 
+## [0.6.0] - 2025-08-10
+- **Included default web UX for testing if custom website is not built - packaged with pip**
+- **changlog now included in pypi**
+- **server.py is updated to handle runtime assembly**
+- **JSONValue variable is removed due to recursion issues and response model handling is fixed**
+
+
+## [0.5.1] - 2025-08-10
+
+###Changed
+- **formatting and code readibility following lint and ruff checks**
+- **type consistency and additional security checks with bandit**
+- **minor bug fixes**
+
+
 ## [0.5.0] - 2025-08-08
 ### Added
 - **Telemetry toggles in YAML**:  
