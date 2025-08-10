@@ -1,4 +1,4 @@
-import os
+
 from rag_llm_api_pipeline.retriever import get_answer
 
 def test_get_answer():

@@ -1,13 +1,3 @@
-"""
-FastAPI server for RAG LLM API Pipeline (reconciled)
-- Serves web UI (from CWD/webapp or fallbacks)
-- /health and /query endpoints
-- Optional stats in response (controlled via YAML)
-"""
-
-"""
-FastAPI server for RAG LLM API Pipeline (always returns sources)
-"""
 
 import os
 import logging
@@ -22,6 +12,14 @@ from rag_llm_api_pipeline.retriever import get_answer
 from rag_llm_api_pipeline.config_loader import load_config
 
 import uvicorn
+
+"""
+FastAPI server for RAG LLM API Pipeline (reconciled)
+- Serves web UI (from CWD/webapp or fallbacks)
+- /health and /query endpoints
+- Optional stats in response (controlled via YAML)
+"""
+
 
 app = FastAPI(title="RAG LLM API Pipeline")
 

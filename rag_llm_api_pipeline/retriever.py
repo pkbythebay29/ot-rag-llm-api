@@ -127,10 +127,10 @@ def _retrieve_chunks(system_name: str, question: str):
     # FAISS search
     k = int(config["retriever"].get("top_k", 5))
     t_s0 = _now()
-    _, I = index.search(qv, k)
+    _, index_ids = index.search(qv, k)
     t_s1 = _now()
 
-    retrieved_idx = I[0].tolist()
+    retrieved_idx = index_ids[0].tolist()
     chunks = [texts[i] for i in retrieved_idx]
 
     # Chunk metadata (with filenames if available)
