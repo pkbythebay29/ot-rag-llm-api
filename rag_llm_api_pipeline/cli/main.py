@@ -104,7 +104,7 @@ def main():
 
                 uvicorn.run(
                     "rag_llm_api_pipeline.api.server:app",
-                    host="0.0.0.0",
+                    host="0.0.0.0",  # nosec B104
                     port=8000,
                     reload=False,
                 )
