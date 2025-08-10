@@ -63,9 +63,11 @@ def query_system(request: QueryRequest):
                 stats = out[2]
         else:
             answer = str(out)
-            
-        JSONValue = Union[str, int, float, bool, None, dict[str, "JSONValue"], list["JSONValue"]]
-        
+
+        JSONValue = Union[
+            str, int, float, bool, None, dict[str, "JSONValue"], list["JSONValue"]
+        ]
+
         resp: dict[str, JSONValue] = {
             "system": request.system,
             "question": request.question,
