@@ -48,7 +48,11 @@ def query_system(request: QueryRequest) -> dict[str, Any] | JSONResponse:
     show_ct = cfg.get("settings", {}).get("show_chunk_timing", True)
 
     try:
-        logger.info("Received query: system='%s', question='%s'", request.system, request.question)
+        logger.info(
+            "Received query: system='%s', question='%s'",
+            request.system,
+            request.question,
+        )
         out = get_answer(request.system, request.question)
 
         answer: Optional[str] = None
@@ -123,7 +127,9 @@ def _mount_web(app_: FastAPI) -> None:
         app_.mount("/", StaticFiles(directory=env_dir, html=True), name="web")
         return
     elif env_dir:
-        logger.warning("RAG_WEB_DIR set to '%s' but index.html not found. Ignoring.", env_dir)
+        logger.warning(
+            "RAG_WEB_DIR set to '%s' but index.html not found. Ignoring.", env_dir
+        )
 
     # 3) Packaged
     try:
@@ -132,13 +138,21 @@ def _mount_web(app_: FastAPI) -> None:
             index_path = pkg_path / "index.html"
             if pkg_path.is_dir() and index_path.is_file():
                 logger.info("Mounting packaged webapp: %s", pkg_path)
-                app_.mount("/", StaticFiles(directory=str(pkg_path), html=True), name="web")
+                app_.mount(
+                    "/", StaticFiles(directory=str(pkg_path), html=True), name="web"
+                )
                 return
-            logger.warning("Packaged web exists but index.html not found at: %s", index_path)
+            logger.warning(
+                "Packaged web exists but index.html not found at: %s", index_path
+            )
     except Exception:
-        logger.exception("Failed to access packaged web directory via importlib.resources.")
+        logger.exception(
+            "Failed to access packaged web directory via importlib.resources."
+        )
 
-    logger.warning("No web UI directory found with index.html. API available at /query.")
+    logger.warning(
+        "No web UI directory found with index.html. API available at /query."
+    )
 
 
 _mount_web(app)

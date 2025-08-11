@@ -55,8 +55,7 @@ def build_index(system_name: str) -> Dict[str, Any]:
     docs = system.get("docs", [])
     if not docs:
         docs = [
-            f for f in os.listdir(data_dir)
-            if os.path.isfile(os.path.join(data_dir, f))
+            f for f in os.listdir(data_dir) if os.path.isfile(os.path.join(data_dir, f))
         ]
         print(f"[INFO] Auto-discovered {len(docs)} documents in {data_dir}")
 
@@ -94,7 +93,7 @@ def build_index(system_name: str) -> Dict[str, Any]:
     t_emb0 = _now()
     batches = []
     for i in range(0, len(texts), batch_size):
-        emb = embedder.encode(texts[i:i + batch_size])
+        emb = embedder.encode(texts[i : i + batch_size])
         batches.append(emb)
     embeddings = np.vstack(batches)
     embeddings = _maybe_normalize(embeddings)
@@ -152,7 +151,9 @@ def _retrieve_chunks(system_name: str, question: str):
     if os.path.exists(normflag_path):
         stored_flag = open(normflag_path).read().strip()
         if stored_flag != ("1" if _NORMALIZE else "0"):
-            print("[WARN] Normalization setting has changed since index build. Rebuild the index.")
+            print(
+                "[WARN] Normalization setting has changed since index build. Rebuild the index."
+            )
 
     # Query embedding
     t_qe0 = _now()
