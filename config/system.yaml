@@ -2,68 +2,77 @@
 # rag-llm-api-pipeline — system.yaml
 # ===============================
 
-# --- Systems & Data (what you want to query) ---
 assets:
   - name: TestSystem
-    docs: []                 # Leave empty to auto-discover all supported files from settings.data_dir
+    docs: []  # Auto-Index all files in settings.data_dir
 
-# --- Generation model (LLM) ---
 models:
-  llm_model: Qwen/Qwen3-4B-Instruct-2507   # Default LLM (great quality vs VRAM balance)
-  device: auto                          # auto | cpu | cuda
-  model_precision: auto                 # auto | fp32 | fp16 | bf16
-  use_harmony: false                    # true only for OpenAI gpt-oss models (Harmony format)
-
-  # Memory/allocator hints (helps avoid CUDA fragmentation / OOM)
+  llm_model: Qwen/Qwen3-4B-Instruct-2507
+  device: auto
+  model_precision: auto
+  use_harmony: false
   memory_strategy:
-    use_expandable_segments: true       # sets PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-    max_memory_gb: null                 # e.g., 18 to cap VRAM usage; null = let HF decide
+    use_expandable_segments: true
+    max_memory_gb: null
 
-# --- Retrieval (embeddings + FAISS) ---
 retriever:
-  embedding_model: sentence-transformers/all-MiniLM-L6-v2   # moved here to fix earlier value error
-  top_k: 5                                                  # number of chunks to retrieve
-  index_dir: indices                                        # where FAISS files & text pickle live
-  encode_batch_size: 32                                     # batching for embeddings (build & query)
+  embedding_model: sentence-transformers/all-MiniLM-L6-v2
+  top_k: 5
+  index_dir: indices
+  encode_batch_size: 32
+  normalize_embeddings: false
 
-# --- LLM prompt & generation controls ---
 llm:
   max_new_tokens: 256
-  max_input_tokens: 3072           # guard-rail to keep prompt within model context window
-  temperature: 0.1                 # lower = more deterministic (good for RAG/QA)
-  top_p: 0.9
-  repetition_penalty: 1.05         # discourages token reuse; 1.05–1.15 is typical
-  no_repeat_ngram_size: 4          # forbids repeating 4-grams
-  stop_sequences: []               # optional list of hard stops, e.g. ["\n\nUser:", "Answer:"]
+  max_input_tokens: 3072
+  repetition_penalty: 1.05
+  no_repeat_ngram_size: 3
+  stop_sequences: []
+
+  preset: baseline  # baseline | beam | explore | drafts
+
+  presets:
+    baseline:
+      do_sample: false
+      num_beams: 1
+    beam:
+      do_sample: false
+      num_beams: 6
+      length_penalty: 1.1
+      early_stopping: true
+    explore:
+      do_sample: true
+      num_beams: 1
+      temperature: 0.7
+      top_p: 0.9
+      # top_k: 50
+    drafts:
+      do_sample: true
+      num_beams: 4
+      temperature: 0.8
+      top_p: 0.92
+      num_return_sequences: 3
+
   prompt_template: |
     You are a helpful assistant for industrial systems.
 
-    Use ONLY the provided context to answer. If the answer is not in the context,
+    Use the provided context to answer. If the answer is not in the context,
     say "I don't know."
+
+    Question: {question}
 
     Context:
     {context}
 
-    Question: {question}
     Answer:
 
-# --- Global behavior & telemetry toggles ---
 settings:
-  data_dir: data/manuals            # root folder for your manuals (PDF, TXT, images, audio, video)
-  index_dir: indices                # optional global alias (retriever.index_dir is the one used)
-  force_rebuild_index: false        # rebuild FAISS on next run
-  use_cpu: false                    # force CPU even if a GPU exists
+  data_dir: data/manuals
+  index_dir: indices
+  force_rebuild_index: false
+  use_cpu: false
 
-  # UI/CLI/API telemetry
-  show_chunks: true                # include retrieved chunks in responses
-  show_query_time: true             # include total query latency
-  show_token_speed: true            # include tokens/sec + gen token count/time
-  show_chunk_timing: true           # include retrieval timings & per-chunk metadata
-
-# --- (Optional) OpenAI/gpt-oss/Harmony wiring hints ---
-# If you switch to an OpenAI gpt-oss model, set:
-# models:
-#   llm_model: openai/gpt-oss-7b
-#   use_harmony: true
-# (Everything else can remain the same.)
-
+  show_chunks: true
+  show_query_time: true
+  show_token_speed: true
+  show_chunk_timing: true

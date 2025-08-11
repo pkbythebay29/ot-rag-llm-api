@@ -1,176 +1,139 @@
-# rag_llm_api_pipeline/llm_wrapper.py
 import os
 import gc
-import yaml
 import time
+import yaml
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 
 CONFIG_PATH = "config/system.yaml"
 
-
 def _load_cfg():
     with open(CONFIG_PATH, "r") as f:
         return yaml.safe_load(f)
 
+_cfg = _load_cfg()
+_models = _cfg.get("models", {})
+_llm = _cfg.get("llm", {})
+_settings = _cfg.get("settings", {})
 
-def _select_device(cfg):
-    prefer = cfg["models"].get("device", "auto")
-    force_cpu = cfg["settings"].get("use_cpu", False)
-    if force_cpu:
-        return "cpu", -1
+MODEL_NAME = _models["llm_model"]
+
+def _select_device():
+    prefer = _models.get("device", "auto")
+    if _settings.get("use_cpu", False):
+        return "cpu"
     if prefer == "auto":
-        if torch.cuda.is_available():
-            return "cuda", 0
-        return "cpu", -1
-    if prefer == "cuda" and torch.cuda.is_available():
-        return "cuda", 0
-    return "cpu", -1
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    return "cuda" if (prefer == "cuda" and torch.cuda.is_available()) else "cpu"
 
-
-def _select_dtype(cfg, device):
-    prec = cfg["models"].get("model_precision", "auto").lower()
-    if prec in ("fp16", "float16"):
-        return torch.float16
-    if prec in ("bf16", "bfloat16"):
-        return torch.bfloat16
-    if prec in ("fp32", "float32"):
-        return torch.float32
+def _select_dtype(device: str):
+    prec = (_models.get("model_precision") or _llm.get("precision") or "auto").lower()
+    if prec in ("fp16", "float16"): return torch.float16
+    if prec in ("bf16", "bfloat16"): return torch.bfloat16
+    if prec in ("fp32", "float32"): return torch.float32
     return torch.float16 if device == "cuda" else torch.float32
 
+_device = _select_device()
+_dtype = _select_dtype(_device)
 
-def _maybe_set_allocator(cfg, device):
-    if device == "cuda" and cfg["models"].get("memory_strategy", {}).get(
-        "use_expandable_segments", True
-    ):
-        os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+# Mitigate CUDA fragmentation
+if _device == "cuda" and _models.get("memory_strategy", {}).get("use_expandable_segments", True):
+    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
+gc.collect()
+if _device == "cuda":
+    torch.cuda.empty_cache()
 
-def _truncate_prompt(tokenizer, text, max_len):
-    enc = tokenizer(text, truncation=True, max_length=max_len, return_tensors="pt")
-    return tokenizer.decode(enc["input_ids"][0], skip_special_tokens=True)
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
+if tokenizer.pad_token_id is None and tokenizer.eos_token_id is not None:
+    tokenizer.pad_token_id = tokenizer.eos_token_id
 
+model = AutoModelForCausalLM.from_pretrained(
+    MODEL_NAME,
+    torch_dtype=_dtype,
+    device_map="auto" if _device == "cuda" else None,
+    trust_remote_code=True,
+)
 
-def _build_pipeline(cfg):
-    model_name = cfg["models"]["llm_model"]
-    device, device_idx = _select_device(cfg)
-    dtype = _select_dtype(cfg, device)
-    _maybe_set_allocator(cfg, device)
+# Avoid Accelerate device conflict: do not set pipeline(device=...) when device_map is used
+pipe_kwargs = {"model": model, "tokenizer": tokenizer, "model_kwargs": {"torch_dtype": _dtype}}
+if _device != "cuda":
+    pipe_kwargs["device"] = -1
 
-    gc.collect()
-    if device == "cuda":
-        torch.cuda.empty_cache()
+pipe = pipeline("text-generation", **pipe_kwargs)
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name)  # nosec B615
-    if tokenizer.pad_token_id is None and tokenizer.eos_token_id is not None:
-        tokenizer.pad_token_id = tokenizer.eos_token_id
+def _tok_ids(text: str):
+    return tokenizer(text, add_special_tokens=False)["input_ids"]
 
-    model = AutoModelForCausalLM.from_pretrained(  # nosec B615
-        model_name,
-        torch_dtype=dtype,
-        device_map="auto" if device == "cuda" else None,
-    )
+def _ids_to_text(ids):
+    return tokenizer.decode(ids, skip_special_tokens=True)
 
-    pipe = pipeline(
-        "text-generation",
-        model=model,
-        tokenizer=tokenizer,
-        device=device_idx,
-        model_kwargs={"torch_dtype": dtype},
-    )
-    return pipe, tokenizer
+def _model_max_input():
+    m = getattr(tokenizer, "model_max_length", None)
+    if m is None or m > 10_000_000_000_000_000:
+        return int(_llm.get("max_input_tokens", 3072))
+    return min(int(_llm.get("max_input_tokens", m)), int(m))
 
+def _truncate_rag_prompt(question: str, context: str, template: str, max_len: int) -> str:
+    if "{question}" not in template or "{context}" not in template:
+        template = (
+            "You are a helpful assistant for industrial systems.\n\n"
+            "Use ONLY the provided context to answer. If the answer is not in the context, say \"I don't know.\"\n\n"
+            "Question: {question}\n\nContext:\n{context}\n\nAnswer:"
+        )
+    head, tail = template.split("{context}", 1)
+    head = head.format(question=question, context="")
+    tail = tail.format(question=question, context="")
+    head_ids = _tok_ids(head)
+    tail_ids = _tok_ids(tail)
+    ctx_ids = _tok_ids(context)
+    budget = max_len - (len(head_ids) + len(tail_ids))
+    if budget < 0:
+        keep_head = max(0, max_len - len(tail_ids))
+        head_ids = head_ids[-keep_head:]
+        budget = max(0, max_len - (len(head_ids) + len(tail_ids)))
+    if len(ctx_ids) > budget:
+        ctx_ids = ctx_ids[-budget:] if budget > 0 else []
+    return _ids_to_text(head_ids + ctx_ids + tail_ids)
+
+def _build_gen_kwargs(llm_cfg, tokenizer):
+    g = {
+        "max_new_tokens": int(llm_cfg.get("max_new_tokens", 256)),
+        "repetition_penalty": float(llm_cfg.get("repetition_penalty", 1.05)),
+        "no_repeat_ngram_size": int(llm_cfg.get("no_repeat_ngram_size", 3)),
+        "return_full_text": False,
+        "pad_token_id": tokenizer.pad_token_id or tokenizer.eos_token_id,
+        "eos_token_id": tokenizer.eos_token_id,
+    }
+    preset_name = llm_cfg.get("preset", "baseline")
+    preset_cfg = (llm_cfg.get("presets", {}) or {}).get(preset_name, {})
+    g.update(preset_cfg)
+    if "num_beams" in g: g["num_beams"] = int(g["num_beams"])
+    if "num_return_sequences" in g: g["num_return_sequences"] = int(g["num_return_sequences"])
+    if not g.get("do_sample", False):
+        for k in ("temperature", "top_p", "top_k", "num_return_sequences"):
+            g.pop(k, None)
+    return g
 
 def ask_llm(question: str, context: str):
     """
     Returns: (answer_text, gen_stats_dict)
-    gen_stats_dict: {
-      "gen_time_sec": float, "gen_tokens": int, "tokens_per_sec": float
-    }
     """
-    cfg = _load_cfg()
-    use_harmony = cfg["models"].get("use_harmony", False)
-    pipe, tok = _build_pipeline(cfg)
-
-    # Compose prompt & truncate to guard context window
-    prompt = cfg["llm"]["prompt_template"].format(context=context, question=question)
-    max_input = int(cfg["llm"].get("max_input_tokens", 3072))
-    prompt = _truncate_prompt(tok, prompt, max_input)
-
-    gen_kwargs = {
-        "max_new_tokens": int(cfg["llm"].get("max_new_tokens", 256)),
-        "temperature": float(cfg["llm"].get("temperature", 0.2)),
-        "top_p": float(cfg["llm"].get("top_p", 0.9)),
-        "repetition_penalty": float(cfg["llm"].get("repetition_penalty", 1.05)),
-        "no_repeat_ngram_size": int(cfg["llm"].get("no_repeat_ngram_size", 4)),
-        "return_full_text": False,
-        "pad_token_id": pipe.tokenizer.pad_token_id or pipe.tokenizer.eos_token_id,
-        "eos_token_id": pipe.tokenizer.eos_token_id,
-    }
-    stop = cfg["llm"].get("stop_sequences", [])
+    template = _llm.get("prompt_template", (
+        "You are a helpful assistant for industrial systems.\n\n"
+        "Use the provided context to answer. If the answer is not in the context, say \"I don't know.\"\n\n"
+        "Question: {question}\n\nContext:\n{context}\n\nAnswer:"
+    ))
+    prompt = _truncate_rag_prompt(question, context, template, max_len=_model_max_input())
+    gen_kwargs = _build_gen_kwargs(_llm, tokenizer)
+    stop = _llm.get("stop_sequences", [])
     if stop:
         gen_kwargs["stop"] = stop
-
-    # Harmony path (for openai/gpt-oss family)
-    if use_harmony:
-        from openai_harmony import (
-            load_harmony_encoding,
-            HarmonyEncodingName,
-            Conversation,
-            Message,
-            Role,
-            SystemContent,
-            DeveloperContent,
-        )
-
-        enc = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)
-        convo = Conversation.from_messages(
-            [
-                Message.from_role_and_content(Role.SYSTEM, SystemContent.new()),
-                Message.from_role_and_content(
-                    Role.DEVELOPER, DeveloperContent.new().with_instructions(prompt)
-                ),
-                Message.from_role_and_content(Role.USER, question),
-            ]
-        )
-        prefill_ids = enc.render_conversation_for_completion(convo, Role.ASSISTANT)
-
-        t0 = time.perf_counter()
-        with torch.no_grad():
-            device = pipe.model.device
-            input_ids = torch.tensor([prefill_ids], device=device)
-            out = pipe.model.generate(
-                input_ids=input_ids,
-                **{
-                    k: v
-                    for k, v in gen_kwargs.items()
-                    if k not in ["return_full_text", "stop"]
-                },
-            )
-        t1 = time.perf_counter()
-
-        completion = out[0].tolist()[len(prefill_ids) :]
-        msgs = enc.parse_messages_from_completion_tokens(completion, Role.ASSISTANT)
-        text = next(
-            (m.content for m in reversed(msgs) if m.role == Role.ASSISTANT), ""
-        ).strip()
-
-        gen_tokens = len(tok.encode(text)) if text else 0
-        gen_time = max(t1 - t0, 1e-9)
-        stats = {
-            "gen_time_sec": round(gen_time, 4),
-            "gen_tokens": gen_tokens,
-            "tokens_per_sec": round(gen_tokens / gen_time, 3),
-        }
-        return text, stats
-
-    # Standard HF path
     t0 = time.perf_counter()
-    result = pipe(prompt, **gen_kwargs)
+    out = pipe(prompt, **gen_kwargs)
     t1 = time.perf_counter()
-
-    text = (result[0]["generated_text"] if result else "").strip()
-    gen_tokens = len(tok.encode(text)) if text else 0
+    text = (out[0]["generated_text"] if out else "").strip()
+    gen_tokens = len(tokenizer.encode(text)) if text else 0
     gen_time = max(t1 - t0, 1e-9)
     stats = {
         "gen_time_sec": round(gen_time, 4),
