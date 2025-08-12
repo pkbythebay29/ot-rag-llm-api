@@ -4,6 +4,7 @@ import time
 import yaml
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+from transformers import StoppingCriteria, StoppingCriteriaList  # minimal patch import
 
 CONFIG_PATH = "config/system.yaml"
 
@@ -44,7 +45,7 @@ def _select_dtype(device: str):
 _device = _select_device()
 _dtype = _select_dtype(_device)
 
-# Mitigate CUDA fragmentation
+# CUDA fragmentation mitigation
 if _device == "cuda" and _models.get("memory_strategy", {}).get(
     "use_expandable_segments", True
 ):
@@ -65,7 +66,7 @@ model = AutoModelForCausalLM.from_pretrained(
     trust_remote_code=True,
 )
 
-# Avoid Accelerate device conflict: do not set pipeline(device=...) when device_map is used
+# Avoid Accelerate conflict
 pipe_kwargs = {
     "model": model,
     "tokenizer": tokenizer,
@@ -139,10 +140,42 @@ def _build_gen_kwargs(llm_cfg, tokenizer):
     return g
 
 
+#  stopping criteria (case/whitespace-insensitive) ---
+class _StopOnSequences(StoppingCriteria):
+    def __init__(self, stop_strings, tokenizer):
+        self._stop_texts = [s.strip().lower() for s in (stop_strings or []) if s and s.strip()]
+        self._tok = tokenizer
+        self._max_len = 0
+        if self._stop_texts:
+            self._stop_ids = [
+                tokenizer.encode(s, add_special_tokens=False) for s in self._stop_texts
+            ]
+            self._max_len = max((len(s) for s in self._stop_ids), default=0)
+
+    def __call__(self, input_ids, scores, **kwargs):
+        if self._max_len == 0:
+            return False
+        for seq in input_ids:
+            tail_ids = seq[-self._max_len:].tolist()
+            tail_text = self._tok.decode(tail_ids, skip_special_tokens=True).strip().lower()
+            for stop_text in self._stop_texts:
+                if tail_text.endswith(stop_text):
+                    return True
+        return False
+
+
+def _maybe_add_stopping_criteria(gen_kwargs, llm_cfg, tokenizer):
+    stop = llm_cfg.get("stop_sequences", []) or []
+    if stop:
+        gen_kwargs["stopping_criteria"] = StoppingCriteriaList(
+            [_StopOnSequences(stop, tokenizer)]
+        )
+    gen_kwargs.pop("stop", None)
+    return gen_kwargs
+# --- PATCH END ---
+
+
 def ask_llm(question: str, context: str):
-    """
-    Returns: (answer_text, gen_stats_dict)
-    """
     template = _llm.get(
         "prompt_template",
         (
@@ -155,9 +188,8 @@ def ask_llm(question: str, context: str):
         question, context, template, max_len=_model_max_input()
     )
     gen_kwargs = _build_gen_kwargs(_llm, tokenizer)
-    stop = _llm.get("stop_sequences", [])
-    if stop:
-        gen_kwargs["stop"] = stop
+    gen_kwargs = _maybe_add_stopping_criteria(gen_kwargs, _llm, tokenizer)
+
     t0 = time.perf_counter()
     out = pipe(prompt, **gen_kwargs)
     t1 = time.perf_counter()

@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
+## [0.7.1] - 2025-08-12
+###Added
+    _StopOnSequences now:
+        Converts all stop_sequences to lowercase and trims whitespace during initialization.
+        Performs lowercase, whitespace-trimmed matching during generation.
+###Changed
+    Matching is now case-insensitive:
+        "Answer:" matches "answer:", "ANSWER:", "Answer:" etc.
+    Matching ignores leading/trailing whitespace in both the stop sequence and model output.
+    Still matches only when the entire stop phrase appears at the end of the decoded text buffer.
+###Removed
+    None — fully backward-compatible; existing YAML still works without changes.
+
+
+## [0.7.0] - 2025-08-11
+-Stabilize device handling (no Accelerate conflict): model uses device_map="auto"; pipeline not passed device on CUDA.
+-Safe truncation: trims context only, preserves Question + Answer:.
+-Decoding presets via llm.preset (baseline|beam|explore|drafts) with auto‑clean of invalid sampling args.
+-Retriever: cached SentenceTransformer + optional L2 normalization (retriever.normalize_embeddings) with .normflag.
+-System.yaml - Improved the context enforcement with stricter guidelines to pass to the retriever and wrapper with additional
+-Decoding presets via llm.preset (baseline, beam, explore, drafts), with auto-removal of invalid sampling args.
+-Compatible with temperature/top_p/top_k when do_sample: true
 
 
 ## [0.6.0] - 2025-08-10
