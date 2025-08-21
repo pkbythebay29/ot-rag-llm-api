@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rag-orchestrator"
-version = "0.1.0"
+version = "0.1.1"
 description = "Lightweight orchestrator with in-process gatekeeper + micro-batching for multi-agent RAG."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -29,5 +29,8 @@ dialogue  = "rag_orchestrator.agents.builtin.dialogue:factory"
 coordinator = "rag_orchestrator.agents.builtin.coordinator:factory"
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["rag_orchestrator"]
 include = ["rag_orchestrator*"]
+
+[tool.setuptools.package-data]
+"rag_orchestrator.web" = ["**/*"]

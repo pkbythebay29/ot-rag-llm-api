@@ -1,0 +1,179 @@
+<!doctype html>
+<html class="h-full bg-white">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>RAG Orchestrator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    .card{border:1px solid #eee;border-radius:18px;box-shadow:0 2px 12px rgba(0,0,0,.04)}
+  </style>
+</head>
+<body class="h-full text-black flex items-center justify-center">
+<main class="w-full max-w-2xl px-6 py-12 text-center">
+  <h1 class="text-5xl font-semibold tracking-tight">RAG Orchestrator</h1>
+  <p class="text-lg text-neutral-600 mt-3">Minimal, fast, clean — with live micro‑batch telemetry.</p>
+
+  <div class="card p-6 mt-8 space-y-4">
+    <div class="grid grid-cols-1 gap-3">
+      <label class="flex flex-col gap-2 text-left">
+        <span class="text-sm text-neutral-600">API Base</span>
+        <input id="apiBase" class="border rounded-xl px-4 py-2" value="http://127.0.0.1:8080/orchestrator"/>
+      </label>
+      <label class="flex flex-col gap-2 text-left">
+        <span class="text-sm text-neutral-600">System</span>
+        <input id="system" class="border rounded-xl px-4 py-2" value="TestSystem"/>
+      </label>
+      <label class="flex flex-col gap-2 text-left">
+        <span class="text-sm text-neutral-600">Name Prefix</span>
+        <input id="prefix" class="border rounded-xl px-4 py-2" value="session1"/>
+      </label>
+    </div>
+
+    <button id="startBtn" class="w-full bg-black text-white px-5 py-3 rounded-2xl font-medium hover:bg-neutral-900">
+      Start Agent
+    </button>
+  </div>
+
+  <div id="agentBox" class="card p-6 mt-8 hidden text-left">
+    <div class="flex items-center justify-between">
+      <div class="text-xl font-semibold">Agent</div>
+      <div id="agentId" class="text-xs px-2 py-1 bg-neutral-100 rounded mono"></div>
+    </div>
+    <textarea id="question" rows="3" class="w-full border rounded-xl p-3 mt-3" placeholder="Ask your question..."></textarea>
+    <div class="mt-3 flex gap-2">
+      <button id="askBtn" class="bg-black text-white px-4 py-2 rounded-xl hover:bg-neutral-900">Ask</button>
+      <button id="clearBtn" class="border px-4 py-2 rounded-xl text-neutral-800 hover:bg-neutral-50">Clear</button>
+    </div>
+    <div class="mt-4">
+      <div class="text-sm text-neutral-500">Answer</div>
+      <div id="answer" class="border rounded-xl p-4 bg-neutral-50 whitespace-pre-wrap"></div>
+      <div id="stats" class="text-xs text-neutral-500 mono mt-1"></div>
+    </div>
+  </div>
+
+  <div class="card p-6 mt-8 text-left">
+    <div class="flex items-center justify-between">
+      <h2 class="text-2xl font-semibold">Batch Telemetry</h2>
+      <div class="text-sm text-neutral-500">Auto refresh</div>
+    </div>
+    <div id="telemetry" class="grid sm:grid-cols-2 gap-4 mt-6"></div>
+  </div>
+</main>
+
+<script>
+(function(){
+  const $ = s => document.querySelector(s);
+  const telemetry = $("#telemetry");
+  let API_BASE = $("#apiBase").value.trim();
+  $("#apiBase").addEventListener("change", e => API_BASE = e.target.value.trim());
+
+  function telemetryCard(key, t){
+    const el = document.createElement("div");
+    el.className = "border rounded-xl p-4 bg-neutral-50";
+    el.innerHTML = `
+      <div class="flex items-center justify-between">
+        <div class="font-medium">${key}</div>
+        <div class="text-xs text-neutral-500">${t.last_flush_time ? new Date(t.last_flush_time*1000).toLocaleTimeString() : "—"}</div>
+      </div>
+      <div class="grid grid-cols-2 gap-2 text-sm mt-3">
+        <div><div class="text-neutral-500">Total Batches</div><div class="text-xl font-semibold">${t.total_batches ?? 0}</div></div>
+        <div><div class="text-neutral-500">Total Requests</div><div class="text-xl font-semibold">${t.total_requests ?? 0}</div></div>
+        <div><div class="text-neutral-500">Last Batch Size</div><div class="text-xl font-semibold">${t.last_batch_size ?? "—"}</div></div>
+        <div><div class="text-neutral-500">Last Flush Latency</div><div class="text-xl font-semibold">${t.last_flush_latency_sec ?? "—"}s</div></div>
+        <div><div class="text-neutral-500">Pending</div><div class="text-xl font-semibold">${t.pending ?? 0}</div></div>
+        <div class="text-xs text-neutral-500">max_batch=${t.max_batch ?? "?"}, max_latency_ms=${t.max_latency_ms ?? "?"}</div>
+      </div>`;
+    return el;
+  }
+
+  async function refreshTelemetry(){
+    try {
+      const r = await fetch(`${API_BASE}/telemetry/batching`);
+      const j = await r.json();
+      const items = j.batching || j || {};
+      telemetry.innerHTML = "";
+      const keys = Object.keys(items);
+      if (keys.length === 0) {
+        const empty = document.createElement("div");
+        empty.textContent = "No active batchers yet.";
+        empty.className = "text-neutral-500";
+        telemetry.appendChild(empty);
+      } else {
+        for (const k of keys) telemetry.appendChild(telemetryCard(k, items[k]));
+      }
+    } catch { /* ignore */ }
+  }
+  setInterval(refreshTelemetry, 1500);
+  refreshTelemetry();
+
+  // Start one agent (retriever) and reveal the query box when ready
+  $("#startBtn").onclick = async () => {
+    const btn = $("#startBtn");
+    btn.disabled = true; btn.textContent = "Starting…";
+    try {
+      const system = $("#system").value.trim() || "DefaultSystem";
+      const prefix = $("#prefix").value.trim() || "session";
+      const res = await fetch(`${API_BASE}/agents/bulk`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ system, name_prefix: prefix, tenant: "default", agents: ["retriever"], copies: 1 })
+      });
+      const data = await res.json();
+      const started = (data.started || [])[0];
+      if (!started) throw new Error("No agent started");
+      const taskId = started.task_id;
+      $("#agentId").textContent = `id: ${taskId}`;
+
+      const show = () => { $("#agentBox").classList.remove("hidden"); };
+      if (started.ready) show();
+      else {
+        // poll readiness
+        const tick = async () => {
+          try {
+            const r = await fetch(`${API_BASE}/agents/ready?task_id=${encodeURIComponent(taskId)}`);
+            const j = await r.json();
+            if (j.ready) return show();
+          } catch {}
+          setTimeout(tick, 600);
+        };
+        tick();
+      }
+    } catch (e) {
+      alert("Failed to start: " + e);
+    } finally {
+      btn.disabled = false; btn.textContent = "Start Agent";
+    }
+  };
+
+  // Ask
+  $("#askBtn").onclick = async () => {
+    const q = $("#question").value.trim();
+    if (!q) return;
+    const btn = $("#askBtn");
+    btn.disabled = true; btn.textContent = "Asking…";
+    try {
+      const system = $("#system").value.trim() || "DefaultSystem";
+      const r = await fetch(`${API_BASE}/query`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ system, question: q, context: "" })
+      });
+      const d = await r.json();
+      $("#answer").textContent = d.text || JSON.stringify(d, null, 2);
+      const s = d.stats || {};
+      $("#stats").textContent = `time=${s.gen_time_sec ?? s.latency ?? "?"}s, tokens=${s.gen_tokens ?? "?"}, tps=${s.tokens_per_sec ?? "?"}, cache_hit=${s.cache_hit ?? false}`;
+    } catch (e) {
+      $("#answer").textContent = "Error: " + e;
+    } finally {
+      btn.disabled = false; btn.textContent = "Ask";
+    }
+  };
+
+  $("#clearBtn").onclick = () => { $("#question").value = ""; $("#answer").textContent = ""; $("#stats").textContent = ""; };
+
+})();
+</script>
+</body>
+</html>

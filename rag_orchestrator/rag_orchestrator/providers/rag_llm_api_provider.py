@@ -14,7 +14,7 @@ class RagLLMApiProvider:
         from rag_llm_api_pipeline.config_loader import load_config
         from rag_llm_api_pipeline.llm_wrapper import LLMWrapper
         self.cfg = load_config(system_yaml_path)
-        self.llm = LLMWrapper(self.cfg)
+        self.llm = llm_rapper(self.cfg)
 
     async def chat(self, messages: list[ChatMessage], **kw: Any) -> ChatResult:
         text = await self.llm.generate(messages=messages, **kw)

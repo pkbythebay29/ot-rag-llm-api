@@ -1,21 +1,28 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+# Simple static catalog; replace with your registry if you have one
 CATALOG = [
-  {"key":"retriever","title":"Retriever Agent","description":"Vector search.","entrypoint":"retriever"},
-  {"key":"compressor","title":"Compressor Agent","description":"Chunk/prompt compression.","entrypoint":"compressor"},
-  {"key":"reranker","title":"Reranker Agent","description":"Cross-encoder re-ranking.","entrypoint":"reranker"},
-  {"key":"drafting","title":"Drafting Agent","description":"Speculative decoding.","entrypoint":"drafting"},
-  {"key":"validator","title":"Validator Agent","description":"Full-precision verification.","entrypoint":"validator"},
-  {"key":"dialogue","title":"Dialogue Agent","description":"Conversation memory + KV cache.","entrypoint":"dialogue"},
-  {"key":"coordinator","title":"Coordinator Agent","description":"Quantization + scheduling.","entrypoint":"coordinator"},
+    {"slug": "retriever",  "name": "Retriever Agent",  "description": "Vector search."},
+    {"slug": "compressor", "name": "Compressor Agent", "description": "Chunk/prompt compression."},
+    {"slug": "reranker",   "name": "Reranker Agent",   "description": "Cross-encoder re-ranking."},
+    {"slug": "drafting",   "name": "Drafting Agent",   "description": "Speculative decoding."},
+    {"slug": "validator",  "name": "Validator Agent",  "description": "Full-precision verification."},
+    {"slug": "dialogue",   "name": "Dialogue Agent",   "description": "Conversation memory + KV cache."},
+    {"slug": "coordinator","name": "Coordinator Agent","description": "Quantization + scheduling."},
 ]
 
 router = APIRouter()
 
-class CatalogItem(BaseModel):
-    key: str; title: str; description: str; entrypoint: str
+class AgentItem(BaseModel):
+    slug: str
+    name: str
+    description: str
 
-@router.get("/orchestrator/catalog", response_model=list[CatalogItem])
+class CatalogResponse(BaseModel):
+    agents: list[AgentItem]
+
+@router.get("/catalog", response_model=CatalogResponse, tags=["catalog"])
 async def catalog():
-    return [CatalogItem(**m) for m in CATALOG]
+    # Return under "agents" so the UI can pick the first slug
+    return CatalogResponse(agents=[AgentItem(**m) for m in CATALOG])
