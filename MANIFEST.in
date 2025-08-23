@@ -1,4 +1,4 @@
-include README.md
+include README-Krionis-pipeline.md
 include LICENSE
 include CHANGELOG.md
 include requirements.txt

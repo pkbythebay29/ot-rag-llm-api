@@ -1,7 +1,9 @@
 from setuptools import setup, find_packages
+from pathlib import Path 
+ROOT = Path(__file__).resolve().parent
+readme_path = ROOT / "README-Krionis-pipeline.md"
+long_description = readme_path.read_text(encoding="utf-8")
 
-with open("README-Krionis-pipeline.md", encoding="utf-8") as f:
-    long_description = f.read()
 
 with open("requirements.txt", encoding="utf-8") as f:
     install_requires = f.read().splitlines()

@@ -14,7 +14,6 @@ setup(
     url="https://github.com/pkbythebay29/ot-rag-llm-api",
     packages=find_packages(),
     include_package_data=True,
-    install_requires=install_requires,
     python_requires=">=3.8",
     classifiers=[
         "Development Status :: 4 - Beta",
