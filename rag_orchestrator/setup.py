@@ -3,16 +3,12 @@ from setuptools import setup, find_packages
 with open("README.md", encoding="utf-8") as f:
     long_description = f.read()
 
-with open("requirements.txt", encoding="utf-8") as f:
-    install_requires = f.read().splitlines()
-
-
 setup(
-    name="krionis-pipeline",
-    version="0.8.0",
+    name="krionis-orchestrator",
+    version="0.1.1",
     author="pkbythebay29",
     author_email="kannan@haztechrisk.org",
-    description="Krionis Pipeline - multimodal RAG pipeline for low-compute, local, real-world deployment",
+    description="Krionis Orchestrator — agentic batching and coordination on top of the Krionis Pipeline",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/pkbythebay29/ot-rag-llm-api",
@@ -20,16 +16,10 @@ setup(
     include_package_data=True,
     install_requires=install_requires,
     python_requires=">=3.8",
-    entry_points={
-        "console_scripts": [
-            # Old CLI retained for compatibility
-            "rag-cli = rag_llm_api_pipeline.cli.main:main",
-            # New branded CLI
-            "krionis-cli = rag_llm_api_pipeline.cli.main:main",
-        ],
-    },
+    
+    
     classifiers=[
-        "Development Status :: 5 - Production/Stable",
+        "Development Status :: 4 - Beta",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3 :: Only",
         "License :: OSI Approved :: MIT License",
@@ -38,7 +28,7 @@ setup(
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
     project_urls={
-        "Homepage": "https://pypi.org/project/krionis-pipeline/",
+        "Homepage": "https://pypi.org/project/krionis-orchestrator/",
         "Source": "https://github.com/pkbythebay29/ot-rag-llm-api",
     },
 )
