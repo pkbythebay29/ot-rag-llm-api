@@ -34,7 +34,6 @@ This monorepo contains **two independently published PyPI packages**:
   - FastAPI REST API  
   - Lightweight Web UI  
 
-➡️ [See `krionis-pipeline` docs](krionis-pipeline/README.md)  
 
 ---
 
@@ -42,9 +41,6 @@ This monorepo contains **two independently published PyPI packages**:
 - Microbatching & gatekeeper queue for efficient, low-latency queries.  
 - Agent runtime with built-ins. 
 - REST API + Web UI for monitoring and interaction.  
-
-
-➡️ [See `krionis-orchestrator` docs](krionis-orchestrator/README.md)  
 
 ---
 

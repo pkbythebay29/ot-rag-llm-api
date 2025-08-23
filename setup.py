@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-with open("README.md", encoding="utf-8") as f:
+with open("README-Krionis-pipeline.md", encoding="utf-8") as f:
     long_description = f.read()
 
 with open("requirements.txt", encoding="utf-8") as f:
