@@ -202,3 +202,54 @@ def ask_llm(question: str, context: str):
         "tokens_per_sec": round(gen_tokens / gen_time, 3),
     }
     return text, stats
+# --------------------------------------------------------------------------------------
+# Backward-compatibility shim so callers can `from rag_llm_api_pipeline.llm_wrapper import LLMWrapper`
+# The orchestrator expects a class with a simple "generate" / "complete" interface.
+# We reuse the already-initialized global pipeline & tokenizer above.
+# --------------------------------------------------------------------------------------
+class LLMWrapper:
+    """
+    Thin adapter around `ask_llm(question, context)` for backward compatibility.
+
+    Usage patterns supported:
+      - LLMWrapper().generate(question=..., context=...)
+      - LLMWrapper().complete(question=..., context=...)
+      - LLMWrapper()(question, context)  # callable
+    """
+    def __init__(self, config_path: str | None = None, **kwargs):
+        # We already loaded the pipeline with module-level CONFIG_PATH.
+        # If a different path is passed, we ignore it (or you can add reload logic later).
+        self.config_path = config_path or CONFIG_PATH
+        self.extra = kwargs
+
+    def generate(self, question: str, context: str, **kwargs):
+        text, stats = ask_llm(question=question, context=context)
+        # Return a simple, common shape
+        return {"text": text, "stats": stats}
+
+    # Some callers use "complete" instead of "generate"
+    def complete(self, question: str, context: str, **kwargs):
+        return self.generate(question=question, context=context, **kwargs)
+
+    # Some callers may expect a chat-like API; we support a single-turn form
+    def chat(self, messages: list[dict], **kwargs):
+        """
+        messages: [{ "role": "user"/"system"/"assistant", "content": "..." }, ...]
+        We build a (question, context) pair: last user message = question,
+        earlier non-user messages concatenated as context.
+        """
+        q = ""
+        ctx_parts = []
+        for m in messages:
+            role = (m.get("role") or "").lower()
+            content = m.get("content") or ""
+            if role == "user":
+                q = content
+            else:
+                ctx_parts.append(f"{role}: {content}")
+        context = "\n".join(ctx_parts).strip()
+        return self.generate(question=q, context=context or "", **kwargs)
+
+    # Allow callable instance: LLMWrapper()(question, context)
+    def __call__(self, question: str, context: str, **kwargs):
+        return self.generate(question=question, context=context, **kwargs)

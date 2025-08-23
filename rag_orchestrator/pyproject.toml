@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rag-orchestrator"
+version = "0.1.1"
+description = "Lightweight orchestrator with in-process gatekeeper + micro-batching for multi-agent RAG."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = [
+  "fastapi>=0.110",
+  "pydantic>=2.6",
+  "anyio>=4.4",
+  "uvicorn>=0.29"
+]
+
+[project.scripts]
+rag-orchestrator = "rag_orchestrator.__main__:main"
+
+[project.entry-points."rag_orchestrator.agents"]
+retriever = "rag_orchestrator.agents.builtin.retriever:factory"
+compressor = "rag_orchestrator.agents.builtin.compressor:factory"
+reranker  = "rag_orchestrator.agents.builtin.reranker:factory"
+drafting  = "rag_orchestrator.agents.builtin.drafting:factory"
+validator = "rag_orchestrator.agents.builtin.validator:factory"
+dialogue  = "rag_orchestrator.agents.builtin.dialogue:factory"
+coordinator = "rag_orchestrator.agents.builtin.coordinator:factory"
+
+[tool.setuptools.packages.find]
+where = ["rag_orchestrator"]
+include = ["rag_orchestrator*"]
+
+[tool.setuptools.package-data]
+"rag_orchestrator.web" = ["**/*"]
