@@ -5,7 +5,7 @@ with open("README.md", encoding="utf-8") as f:
 
 setup(
     name="krionis-orchestrator",
-    version="0.1.1",
+    version="0.2.1",
     author="pkbythebay29",
     author_email="kannan@haztechrisk.org",
     description="Krionis Orchestrator — agentic batching and coordination on top of the Krionis Pipeline",

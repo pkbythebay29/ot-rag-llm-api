@@ -11,7 +11,7 @@ with open("requirements.txt", encoding="utf-8") as f:
 
 setup(
     name="krionis-pipeline",
-    version="0.8.0",
+    version="0.8.1",
     author="pkbythebay29",
     author_email="kannan@haztechrisk.org",
     description="Krionis Pipeline - multimodal RAG pipeline for low-compute, local, real-world deployment",

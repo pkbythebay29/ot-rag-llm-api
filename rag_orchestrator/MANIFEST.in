@@ -1,2 +1,2 @@
 include README.md
-recursive-include src *.py *.md
+recursive-include rag_orchestrator *.html *.css *.js *.svg *.json
