@@ -1,34 +1,59 @@
+# rag_orchestrator/providers/rag_llm_api_provider.py
 from __future__ import annotations
-from typing import Any, Iterable
-from ..core.types import ChatMessage, ChatResult
-from ..api.imports import is_installed
 
-class MissingRagPipeline(RuntimeError):
-    def __init__(self):
-        super().__init__("rag_llm_api_pipeline not installed. Run: pip install rag-llm-api-pipeline")
+from pathlib import Path
+from typing import Tuple, Any
+
 
 class RagLLMApiProvider:
-    def __init__(self, system_yaml_path: str):
-        if not is_installed("rag_llm_api_pipeline"):
-            raise MissingRagPipeline()
-        from rag_llm_api_pipeline.config_loader import load_config
-        from rag_llm_api_pipeline.llm_wrapper import LLMWrapper
-        self.cfg = load_config(system_yaml_path)
-        self.llm = llm_rapper(self.cfg)
+    """
+    Thin adapter that can talk to rag_llm_api_pipeline regardless of whether it
+    exposes a module-level `ask_llm(question, context)` function or a class
+    `LLMWrapper` with `.ask(...)` / `.ask_llm(...)`.
+    """
 
-    async def chat(self, messages: list[ChatMessage], **kw: Any) -> ChatResult:
-        text = await self.llm.generate(messages=messages, **kw)
-        return {"text": text}
+    def __init__(self, system_yaml: Path | str) -> None:
+        # system_yaml is accepted for parity with other providers,
+        # but the current LLM wrapper uses global CONFIG_PATH internally.
+        self.system_yaml = Path(system_yaml)
 
-    async def embed(self, texts: Iterable[str], **kw: Any) -> list[list[float]]:
-        if hasattr(self.llm, "embed"):
-            return await self.llm.embed(list(texts), **kw)
-        return [[float(len(t))] for t in texts]
+        # Detect & bind an "ask" callable from the pipeline.
+        self._ask = self._resolve_ask_callable()
 
-    async def forward_batch(self, prompts: list[str]) -> list[str]:
-        if hasattr(self.llm, "generate_batch"):
-            return await self.llm.generate_batch(prompts)
-        outs = []
-        for p in prompts:
-            outs.append(await self.llm.generate(messages=[{"role":"user","content":p}]))
-        return outs
+    def _resolve_ask_callable(self):
+        try:
+            # 1) Preferred: module-level function
+            from rag_llm_api_pipeline.llm_wrapper import ask_llm  # type: ignore
+            return ask_llm
+        except Exception:
+            pass
+
+        # 2) Fallback: class with ask()/ask_llm()
+        try:
+            from rag_llm_api_pipeline.llm_wrapper import LLMWrapper  # type: ignore
+            llm = LLMWrapper()
+            if hasattr(llm, "ask") and callable(getattr(llm, "ask")):
+                return llm.ask
+            if hasattr(llm, "ask_llm") and callable(getattr(llm, "ask_llm")):
+                return llm.ask_llm
+        except Exception as e:
+            raise RuntimeError(
+                "Could not bind an ask() callable from rag_llm_api_pipeline.llm_wrapper. "
+                "Expected `ask_llm(question, context)` or class `LLMWrapper` with "
+                "`.ask(...)` / `.ask_llm(...)`."
+            ) from e
+
+        raise RuntimeError(
+            "LLM wrapper found but did not expose `.ask` or `.ask_llm`."
+        )
+
+    def query(self, question: str, context: str = "") -> Tuple[str, dict]:
+        """
+        Ask the underlying pipeline. Returns (text, stats dict).
+        """
+        out = self._ask(question, context)  # function may return (text, stats)
+        if isinstance(out, tuple) and len(out) == 2:
+            text, stats = out
+            return str(text or ""), dict(stats or {})
+        # Be forgiving: if just text came back
+        return str(out or ""), {}

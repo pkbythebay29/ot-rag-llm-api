@@ -5,7 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from .routes import router as orchestrator_router
 from .imports import load_builtin_agents
+
 load_builtin_agents() 
+
 app = FastAPI(title="RAG Orchestrator", version="0.1.0")
 
 # CORS for local UI

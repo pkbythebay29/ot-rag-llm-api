@@ -24,3 +24,6 @@ def create(agent_type: str, spec: AgentSpec) -> Agent:
 
 def list_types() -> list[str]:
     load_entry_points(); return sorted(_registry.keys())
+
+def list_registered() -> list[str]:
+    return sorted(_registry.keys())

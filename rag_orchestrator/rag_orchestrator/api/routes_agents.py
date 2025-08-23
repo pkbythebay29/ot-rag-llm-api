@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from typing import List, Dict, Any, Optional
+from typing import List, Any, Optional
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
-# Reuse your manager + helper from api/_state.py
-from ._state import manager, ensure_started_task
-
+# Use the manager directly (avoid helper drift)
+from ._state import manager
+from ..agents.base import AgentSpec
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 
@@ -47,14 +47,10 @@ class AgentsStatusResponse(BaseModel):
     agents: List[AgentStatus]
 
 
-# ---------- Helpers (defensive; work with your current Manager/Task API) ----------
+# ---------- Helpers ----------
 
 def _task_ready(task: Any) -> bool:
-    """
-    Best-effort readiness check that doesn't assume a specific Task API.
-    Falls back to False if we can't tell.
-    """
-    # Common patterns: .ready, .is_ready(), .started, .started_event.is_set()
+    # Try common flags
     for attr in ("ready", "is_ready", "started"):
         if hasattr(task, attr):
             val = getattr(task, attr)
@@ -69,7 +65,8 @@ def _task_ready(task: Any) -> bool:
             return bool(ev.is_set())
         except Exception:
             pass
-    return False
+    # Single-CPU UX: default optimistic so the query box appears immediately.
+    return True
 
 
 def _task_name(task: Any) -> Optional[str]:
@@ -84,7 +81,6 @@ def _task_name(task: Any) -> Optional[str]:
 
 
 def _task_created(task: Any) -> float:
-    # Seconds since epoch; if unknown, use "now"
     for attr in ("created_at", "created", "ts", "timestamp"):
         if hasattr(task, attr):
             try:
@@ -105,48 +101,55 @@ def _task_created(task: Any) -> float:
 async def bulk_create(inp: BulkCreateRequest):
     """
     Start N copies for each requested agent slug and return task handles.
+    Uses manager.create(...) directly to avoid helper signature drift.
     """
     if not inp.agents:
         raise HTTPException(status_code=400, detail="No agents provided")
 
     started: List[StartedItem] = []
-    for t in inp.agents:
+
+    for slug in inp.agents:
         for i in range(inp.copies):
-            # ensure_started_task is already in your repo and returns a task/handle
             try:
-                task = await ensure_started_task(
-                    manager=manager,
-                    system_name=inp.system,
-                    agent_slug=t,
-                    name_prefix=inp.name_prefix,
+                spec = AgentSpec(
+                    name=f"{inp.name_prefix}-{slug}-{i}",
+                    system=inp.system,
                     tenant=inp.tenant or "default",
                 )
+                task = await manager.create(slug, spec)
             except KeyError:
-                raise HTTPException(status_code=400, detail=f"Unknown agent slug: {t}")
+                raise HTTPException(status_code=400, detail=f"Unknown agent slug: {slug}")
+            except HTTPException:
+                raise
             except Exception as e:
-                raise HTTPException(status_code=500, detail=f"Failed to start '{t}': {e}")
+                import traceback
+                tb = traceback.format_exc()
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to start '{slug}': {e}\n{tb}"
+                ) from e
 
-            # Gather minimal status so the UI can decide when to render query boxes
+            # Use the created name as a stable task_id and report ready now.
+            task_id = spec.name
             started.append(
                 StartedItem(
-                    agent=t,
-                    task_id=str(getattr(task, "id", _task_name(task) or f"{t}-{i}")),
-                    ready=_task_ready(task),
-                    name=_task_name(task),
+                    agent=slug,
+                    task_id=task_id,
+                    ready=True,                 # optimistic ready for smooth UX
+                    name=spec.name,
                     created_at=_task_created(task),
                 )
             )
+
+    if not started:
+        raise HTTPException(status_code=500, detail="No agent started (manager.create returned nothing)")
+
     return BulkCreateResponse(started=started)
 
 
 @router.get("/status", response_model=AgentsStatusResponse)
 async def agents_status():
-    """
-    Return readiness for all known tasks.
-    We introspect the manager without assuming its internal shape too much.
-    """
     agents: List[AgentStatus] = []
-    # Try common containers: manager.tasks, manager.handles, manager.registry
     containers = []
     for attr in ("tasks", "handles", "registry", "instances"):
         if hasattr(manager, attr):
@@ -157,16 +160,7 @@ async def agents_status():
 
     seen = set()
     for c in containers:
-        # dict-like
-        if isinstance(c, dict):
-            it = c.items()
-        else:
-            # list/iterable of tasks
-            try:
-                it = enumerate(list(c))
-            except Exception:
-                continue
-
+        it = c.items() if isinstance(c, dict) else enumerate(list(c)) if hasattr(c, "__iter__") else []
         for key, task in it:
             task_id = str(getattr(task, "id", _task_name(task) or key))
             if task_id in seen:
@@ -181,17 +175,11 @@ async def agents_status():
                     created_at=_task_created(task),
                 )
             )
-
     return AgentsStatusResponse(agents=agents)
 
 
 @router.get("/ready")
 async def agent_ready(task_id: str = Query(..., description="Task/agent id to check")):
-    """
-    Lightweight check: is a specific agent ready?
-    The UI can poll this to decide when to render the query box.
-    """
-    # Probe through likely containers
     candidates = []
     for attr in ("tasks", "handles", "registry", "instances"):
         if hasattr(manager, attr):
@@ -201,23 +189,25 @@ async def agent_ready(task_id: str = Query(..., description="Task/agent id to ch
                 pass
 
     for c in candidates:
-        # dict
         if isinstance(c, dict):
+            # direct key
             t = c.get(task_id)
             if t is not None:
                 return {"task_id": task_id, "ready": _task_ready(t)}
-            # also try values where .id matches
+            # match by 'name' too
+            for v in c.values():
+                if _task_name(v) == task_id:
+                    return {"task_id": task_id, "ready": _task_ready(v)}
+            # and by .id
             for v in c.values():
                 if str(getattr(v, "id", _task_name(v))) == task_id:
                     return {"task_id": task_id, "ready": _task_ready(v)}
         else:
-            # iterable
             try:
                 for v in c:
-                    if str(getattr(v, "id", _task_name(v))) == task_id:
+                    if _task_name(v) == task_id or str(getattr(v, "id", _task_name(v))) == task_id:
                         return {"task_id": task_id, "ready": _task_ready(v)}
             except Exception:
                 pass
 
-    # Not found — return false instead of 404 so UI can keep polling
     return {"task_id": task_id, "ready": False}
