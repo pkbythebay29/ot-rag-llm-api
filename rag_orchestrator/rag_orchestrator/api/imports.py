@@ -8,6 +8,7 @@ from typing import List, Tuple
 
 log = logging.getLogger("rag_orchestrator.imports")
 
+
 def is_installed(pkg: str) -> bool:
     """Keep your helper: check if a top-level package is importable."""
     return importlib.util.find_spec(pkg) is not None

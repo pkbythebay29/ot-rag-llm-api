@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict
 
+
 @dataclass
 class AgentSpec:
     name: str
@@ -10,8 +11,11 @@ class AgentSpec:
     tenant: str = "default"
     config: Dict[str, Any] | None = None
 
+
 class Agent(ABC):
-    def __init__(self, spec: AgentSpec) -> None: self.spec = spec
+    def __init__(self, spec: AgentSpec) -> None:
+        self.spec = spec
+
     @abstractmethod
     async def start(self) -> None: ...
     @abstractmethod

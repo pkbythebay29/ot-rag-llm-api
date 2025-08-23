@@ -5,11 +5,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from .routes import router as orchestrator_router
 from .imports import load_builtin_agents
-from . import routes_telemetry 
+from . import routes_telemetry
 from . import routes_query
 
-load_builtin_agents() 
- 
+load_builtin_agents()
+
 app = FastAPI(title="RAG Orchestrator", version="0.1.0")
 
 # CORS for local UI
@@ -30,6 +30,7 @@ app.include_router(routes_telemetry.router)
 @app.get("/healthz")
 def healthz():
     return {"ok": True}
+
 
 # Static UI last (so /orchestrator/* still hits API)
 web_dir = Path(__file__).resolve().parent.parent / "web"

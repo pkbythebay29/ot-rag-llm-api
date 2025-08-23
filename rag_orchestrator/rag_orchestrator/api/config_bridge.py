@@ -4,17 +4,20 @@ from typing import Any
 from pathlib import Path
 import yaml
 
+
 @dataclass
 class OrchestratorBatchCfg:
     max_batch: int = 8
     max_latency_ms: int = 5
     max_queue: int = 1024
 
+
 @dataclass
 class OrchestratorGateCfg:
     rps: float = 20.0
     burst: int = 40
     timeout_s: float = 30.0
+
 
 @dataclass
 class BridgeConfig:
@@ -23,13 +26,19 @@ class BridgeConfig:
     batch: OrchestratorBatchCfg
     gate: OrchestratorGateCfg
 
-def resolve_system_yaml(system: str | None, systems_root: str, fallback_yaml: str) -> str:
+
+def resolve_system_yaml(
+    system: str | None, systems_root: str, fallback_yaml: str
+) -> str:
     if system:
         cand = Path(systems_root) / system / "system.yaml"
-        if cand.exists(): return str(cand)
+        if cand.exists():
+            return str(cand)
     fb = Path(fallback_yaml)
-    if fb.exists(): return str(fb)
+    if fb.exists():
+        return str(fb)
     return str(Path("config") / "system.yaml")
+
 
 def load_bridge_config(path: str) -> BridgeConfig:
     with open(path, "r", encoding="utf-8") as f:

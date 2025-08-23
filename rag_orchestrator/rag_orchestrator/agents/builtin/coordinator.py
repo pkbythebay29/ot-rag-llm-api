@@ -3,6 +3,7 @@ from typing import Any, Dict
 from ..base import Agent, AgentSpec
 from ..registry import register
 
+
 class CoordinatorAgent(Agent):
     async def start(self) -> None: ...
     async def stop(self) -> None: ...
@@ -10,5 +11,7 @@ class CoordinatorAgent(Agent):
         # TODO: orchestrate sub-steps (quantization, batching strategy, presets)
         return {"coordinated": True}
 
+
 @register("coordinator")
-def factory(spec: AgentSpec): return CoordinatorAgent(spec)
+def factory(spec: AgentSpec):
+    return CoordinatorAgent(spec)

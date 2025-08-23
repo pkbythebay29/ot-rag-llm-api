@@ -15,11 +15,14 @@ router = APIRouter(prefix="/agents", tags=["agents"])
 
 # ---------- Models ----------
 
+
 class BulkCreateRequest(BaseModel):
     system: str = Field(..., description="System name (maps to a provider/system.yaml)")
     name_prefix: str = Field(..., description="Prefix for agent instance names")
     agents: List[str] = Field(..., description="Agent slugs, e.g. ['retriever']")
-    copies: int = Field(1, ge=1, le=64, description="How many copies of each agent to start")
+    copies: int = Field(
+        1, ge=1, le=64, description="How many copies of each agent to start"
+    )
     tenant: Optional[str] = Field("default", description="Multi-tenant label")
 
 
@@ -48,6 +51,7 @@ class AgentsStatusResponse(BaseModel):
 
 
 # ---------- Helpers ----------
+
 
 def _task_ready(task: Any) -> bool:
     # Try common flags
@@ -97,6 +101,7 @@ def _task_created(task: Any) -> float:
 
 # ---------- Routes ----------
 
+
 @router.post("/bulk", response_model=BulkCreateResponse)
 async def bulk_create(inp: BulkCreateRequest):
     """
@@ -118,15 +123,17 @@ async def bulk_create(inp: BulkCreateRequest):
                 )
                 task = await manager.create(slug, spec)
             except KeyError:
-                raise HTTPException(status_code=400, detail=f"Unknown agent slug: {slug}")
+                raise HTTPException(
+                    status_code=400, detail=f"Unknown agent slug: {slug}"
+                )
             except HTTPException:
                 raise
             except Exception as e:
                 import traceback
+
                 tb = traceback.format_exc()
                 raise HTTPException(
-                    status_code=500,
-                    detail=f"Failed to start '{slug}': {e}\n{tb}"
+                    status_code=500, detail=f"Failed to start '{slug}': {e}\n{tb}"
                 ) from e
 
             # Use the created name as a stable task_id and report ready now.
@@ -135,14 +142,16 @@ async def bulk_create(inp: BulkCreateRequest):
                 StartedItem(
                     agent=slug,
                     task_id=task_id,
-                    ready=True,                 # optimistic ready for smooth UX
+                    ready=True,  # optimistic ready for smooth UX
                     name=spec.name,
                     created_at=_task_created(task),
                 )
             )
 
     if not started:
-        raise HTTPException(status_code=500, detail="No agent started (manager.create returned nothing)")
+        raise HTTPException(
+            status_code=500, detail="No agent started (manager.create returned nothing)"
+        )
 
     return BulkCreateResponse(started=started)
 
@@ -160,7 +169,13 @@ async def agents_status():
 
     seen = set()
     for c in containers:
-        it = c.items() if isinstance(c, dict) else enumerate(list(c)) if hasattr(c, "__iter__") else []
+        it = (
+            c.items()
+            if isinstance(c, dict)
+            else enumerate(list(c))
+            if hasattr(c, "__iter__")
+            else []
+        )
         for key, task in it:
             task_id = str(getattr(task, "id", _task_name(task) or key))
             if task_id in seen:
@@ -205,7 +220,10 @@ async def agent_ready(task_id: str = Query(..., description="Task/agent id to ch
         else:
             try:
                 for v in c:
-                    if _task_name(v) == task_id or str(getattr(v, "id", _task_name(v))) == task_id:
+                    if (
+                        _task_name(v) == task_id
+                        or str(getattr(v, "id", _task_name(v))) == task_id
+                    ):
                         return {"task_id": task_id, "ready": _task_ready(v)}
             except Exception:
                 pass

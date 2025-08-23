@@ -19,8 +19,9 @@ router = APIRouter(prefix="", tags=["query"])
 
 # ---- paths for system.yaml (your repo has config/system.yaml) ----
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SYSTEMS_ROOT = REPO_ROOT / "config"          # e.g. E:/rag_llm_api_pipeline/config
-FALLBACK_YAML = "system.yaml"                # inside SYSTEMS_ROOT
+SYSTEMS_ROOT = REPO_ROOT / "config"  # e.g. E:/rag_llm_api_pipeline/config
+FALLBACK_YAML = "system.yaml"  # inside SYSTEMS_ROOT
+
 
 # ---- lightweight local provider pool ----
 class _LocalProviderPool:
@@ -39,50 +40,58 @@ class _LocalProviderPool:
         self._cache[system_name] = prov
         return prov
 
+
 _provider_pool = _LocalProviderPool()
 
+
 # ---- NEW: fallback batcher pool ----
-class _FallbackBatcherPool:                                      # ### NEW
-    def __init__(self) -> None:                                  # ### NEW
-        self._cache: dict[str, AsyncMicroBatcher] = {}           # ### NEW
+class _FallbackBatcherPool:  # ### NEW
+    def __init__(self) -> None:  # ### NEW
+        self._cache: dict[str, AsyncMicroBatcher] = {}  # ### NEW
 
-    def get(self, system_name: str) -> AsyncMicroBatcher:        # ### NEW
-        if system_name in self._cache:                           # ### NEW
-            return self._cache[system_name]                      # ### NEW
+    def get(self, system_name: str) -> AsyncMicroBatcher:  # ### NEW
+        if system_name in self._cache:  # ### NEW
+            return self._cache[system_name]  # ### NEW
 
-        prov = _provider_pool.get(system_name)                   # ### NEW
+        prov = _provider_pool.get(system_name)  # ### NEW
 
-        async def forward_fn(batch: list[dict]):                 # ### NEW
-            outs = []                                            # ### NEW
-            for item in batch:                                   # ### NEW
-                text, stats = prov.query(                        # ### NEW
-                    item.get("question", ""),                    # ### NEW
-                    item.get("context", ""),                     # ### NEW
-                )                                                # ### NEW
-                outs.append({                                    # ### NEW
-                    "text": text,                                # ### NEW
-                    "stats": stats,                              # ### NEW
-                    "cache_hit": bool((stats or {}).get("cache_hit", False)),  # ### NEW
-                })                                               # ### NEW
-            return outs                                          # ### NEW
+        async def forward_fn(batch: list[dict]):  # ### NEW
+            outs = []  # ### NEW
+            for item in batch:  # ### NEW
+                text, stats = prov.query(  # ### NEW
+                    item.get("question", ""),  # ### NEW
+                    item.get("context", ""),  # ### NEW
+                )  # ### NEW
+                outs.append(
+                    {  # ### NEW
+                        "text": text,  # ### NEW
+                        "stats": stats,  # ### NEW
+                        "cache_hit": bool(
+                            (stats or {}).get("cache_hit", False)
+                        ),  # ### NEW
+                    }
+                )  # ### NEW
+            return outs  # ### NEW
 
-        batcher = AsyncMicroBatcher(                             # ### NEW
-            forward_fn,                                          # ### NEW
-            max_batch=8,                                         # ### NEW
-            max_latency_ms=5,                                    # ### NEW
-            name=f"fallback:{system_name}",                      # ### NEW
-        )                                                        # ### NEW
+        batcher = AsyncMicroBatcher(  # ### NEW
+            forward_fn,  # ### NEW
+            max_batch=8,  # ### NEW
+            max_latency_ms=5,  # ### NEW
+            name=f"fallback:{system_name}",  # ### NEW
+        )  # ### NEW
 
-        asyncio.get_event_loop().create_task(batcher.start())    # ### NEW
+        asyncio.get_event_loop().create_task(batcher.start())  # ### NEW
 
         # Register for telemetry too                             # ### NEW
-        manager.batchers = getattr(manager, "batchers", {})      # ### NEW
-        manager.batchers[batcher.name] = batcher                 # ### NEW
+        manager.batchers = getattr(manager, "batchers", {})  # ### NEW
+        manager.batchers[batcher.name] = batcher  # ### NEW
 
-        self._cache[system_name] = batcher                       # ### NEW
-        return batcher                                           # ### NEW
+        self._cache[system_name] = batcher  # ### NEW
+        return batcher  # ### NEW
 
-_fallback_batchers = _FallbackBatcherPool()                      # ### NEW
+
+_fallback_batchers = _FallbackBatcherPool()  # ### NEW
+
 
 # ---- models ----
 class QueryRequest(BaseModel):
@@ -91,11 +100,13 @@ class QueryRequest(BaseModel):
     context: Optional[str] = None
     system: Optional[str] = None  # optional override
 
+
 class QueryResponse(BaseModel):
     text: str
     stats: dict = {}
     cache_hit: bool = False
     sources: Optional[List[Dict[str, Any]]] = None
+
 
 # ---- helpers ----
 def _find_task(task_id: str) -> Any | None:
@@ -126,6 +137,7 @@ def _find_task(task_id: str) -> Any | None:
                 pass
     return None
 
+
 def _extract_system_from_task(task: Any) -> Optional[str]:
     # ... unchanged ...
     for attr in ("system",):
@@ -143,6 +155,7 @@ def _extract_system_from_task(task: Any) -> Optional[str]:
             pass
     return None
 
+
 def _mk_resp(text: Any, stats: Optional[dict]) -> QueryResponse:
     s = dict(stats or {})
     src = s.get("sources") or s.get("docs") or s.get("citations")
@@ -156,6 +169,7 @@ def _mk_resp(text: Any, stats: Optional[dict]) -> QueryResponse:
         cache_hit=bool(s.get("cache_hit", False)),
         sources=src,
     )
+
 
 # ---- route ----
 @router.post("/query", response_model=QueryResponse)
@@ -190,14 +204,20 @@ async def orchestrator_query(inp: QueryRequest):
         or "TestSystem"
     )
     try:
-        fb = _fallback_batchers.get(system)                       # ### NEW
-        out = await fb.submit({"question": inp.question, "context": inp.context or ""})  # ### NEW
-        if isinstance(out, tuple) and len(out) == 2:              # ### NEW
-            text, stats = out                                     # ### NEW
-            return _mk_resp(text, stats)                          # ### NEW
-        if isinstance(out, dict) and "text" in out:               # ### NEW
-            return _mk_resp(out.get("text"), out.get("stats", {}))# ### NEW
-        return _mk_resp(out, {})                                  # ### NEW
+        fb = _fallback_batchers.get(system)  # ### NEW
+        out = await fb.submit(
+            {"question": inp.question, "context": inp.context or ""}
+        )  # ### NEW
+        if isinstance(out, tuple) and len(out) == 2:  # ### NEW
+            text, stats = out  # ### NEW
+            return _mk_resp(text, stats)  # ### NEW
+        if isinstance(out, dict) and "text" in out:  # ### NEW
+            return _mk_resp(out.get("text"), out.get("stats", {}))  # ### NEW
+        return _mk_resp(out, {})  # ### NEW
     except Exception as e:
-        detail = f"Agent path failed: {agent_err}" if agent_err else "Agent path unavailable"
-        raise HTTPException(status_code=500, detail=f"{detail}; provider fallback failed: {e}")
+        detail = (
+            f"Agent path failed: {agent_err}" if agent_err else "Agent path unavailable"
+        )
+        raise HTTPException(
+            status_code=500, detail=f"{detail}; provider fallback failed: {e}"
+        )

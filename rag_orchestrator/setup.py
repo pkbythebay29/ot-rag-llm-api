@@ -16,8 +16,6 @@ setup(
     include_package_data=True,
     install_requires=install_requires,
     python_requires=">=3.8",
-    
-    
     classifiers=[
         "Development Status :: 4 - Beta",
         "Programming Language :: Python :: 3",

@@ -3,6 +3,7 @@ from typing import Any, Dict
 from ..base import Agent, AgentSpec
 from ..registry import register
 
+
 class CompressorAgent(Agent):
     async def start(self) -> None: ...
     async def stop(self) -> None: ...
@@ -11,5 +12,7 @@ class CompressorAgent(Agent):
         # TODO: implement real compression/chunking
         return {"compressed": docs}
 
+
 @register("compressor")
-def factory(spec: AgentSpec): return CompressorAgent(spec)
+def factory(spec: AgentSpec):
+    return CompressorAgent(spec)

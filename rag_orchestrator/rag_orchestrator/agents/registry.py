@@ -5,10 +5,14 @@ from .base import Agent, AgentSpec
 
 _registry: Dict[str, Callable[[AgentSpec], Agent]] = {}
 
+
 def register(name: str):
     def deco(factory: Callable[[AgentSpec], Agent]):
-        _registry[name] = factory; return factory
+        _registry[name] = factory
+        return factory
+
     return deco
+
 
 def load_entry_points():
     try:
@@ -17,13 +21,19 @@ def load_entry_points():
     except Exception:
         pass
 
+
 def create(agent_type: str, spec: AgentSpec) -> Agent:
-    if agent_type not in _registry: load_entry_points()
-    if agent_type not in _registry: raise ValueError(f"Unknown agent type '{agent_type}'")
+    if agent_type not in _registry:
+        load_entry_points()
+    if agent_type not in _registry:
+        raise ValueError(f"Unknown agent type '{agent_type}'")
     return _registry[agent_type](spec)
 
+
 def list_types() -> list[str]:
-    load_entry_points(); return sorted(_registry.keys())
+    load_entry_points()
+    return sorted(_registry.keys())
+
 
 def list_registered() -> list[str]:
     return sorted(_registry.keys())

@@ -143,7 +143,9 @@ def _build_gen_kwargs(llm_cfg, tokenizer):
 #  stopping criteria (case/whitespace-insensitive) ---
 class _StopOnSequences(StoppingCriteria):
     def __init__(self, stop_strings, tokenizer):
-        self._stop_texts = [s.strip().lower() for s in (stop_strings or []) if s and s.strip()]
+        self._stop_texts = [
+            s.strip().lower() for s in (stop_strings or []) if s and s.strip()
+        ]
         self._tok = tokenizer
         self._max_len = 0
         if self._stop_texts:
@@ -156,8 +158,10 @@ class _StopOnSequences(StoppingCriteria):
         if self._max_len == 0:
             return False
         for seq in input_ids:
-            tail_ids = seq[-self._max_len:].tolist()
-            tail_text = self._tok.decode(tail_ids, skip_special_tokens=True).strip().lower()
+            tail_ids = seq[-self._max_len :].tolist()
+            tail_text = (
+                self._tok.decode(tail_ids, skip_special_tokens=True).strip().lower()
+            )
             for stop_text in self._stop_texts:
                 if tail_text.endswith(stop_text):
                     return True
@@ -172,6 +176,8 @@ def _maybe_add_stopping_criteria(gen_kwargs, llm_cfg, tokenizer):
         )
     gen_kwargs.pop("stop", None)
     return gen_kwargs
+
+
 # --- PATCH END ---
 
 
@@ -202,6 +208,8 @@ def ask_llm(question: str, context: str):
         "tokens_per_sec": round(gen_tokens / gen_time, 3),
     }
     return text, stats
+
+
 # --------------------------------------------------------------------------------------
 # Backward-compatibility shim so callers can `from rag_llm_api_pipeline.llm_wrapper import LLMWrapper`
 # The orchestrator expects a class with a simple "generate" / "complete" interface.
@@ -216,6 +224,7 @@ class LLMWrapper:
       - LLMWrapper().complete(question=..., context=...)
       - LLMWrapper()(question, context)  # callable
     """
+
     def __init__(self, config_path: str | None = None, **kwargs):
         # We already loaded the pipeline with module-level CONFIG_PATH.
         # If a different path is passed, we ignore it (or you can add reload logic later).

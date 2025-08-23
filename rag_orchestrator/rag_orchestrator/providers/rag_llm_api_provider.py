@@ -24,6 +24,7 @@ class RagLLMApiProvider:
         try:
             # 1) Preferred: module-level function
             from rag_llm_api_pipeline.llm_wrapper import ask_llm  # type: ignore
+
             return ask_llm
         except Exception:
             pass
@@ -31,6 +32,7 @@ class RagLLMApiProvider:
         # 2) Fallback: class with ask()/ask_llm()
         try:
             from rag_llm_api_pipeline.llm_wrapper import LLMWrapper  # type: ignore
+
             llm = LLMWrapper()
             if hasattr(llm, "ask") and callable(getattr(llm, "ask")):
                 return llm.ask
@@ -43,9 +45,7 @@ class RagLLMApiProvider:
                 "`.ask(...)` / `.ask_llm(...)`."
             ) from e
 
-        raise RuntimeError(
-            "LLM wrapper found but did not expose `.ask` or `.ask_llm`."
-        )
+        raise RuntimeError("LLM wrapper found but did not expose `.ask` or `.ask_llm`.")
 
     def query(self, question: str, context: str = "") -> Tuple[str, dict]:
         """

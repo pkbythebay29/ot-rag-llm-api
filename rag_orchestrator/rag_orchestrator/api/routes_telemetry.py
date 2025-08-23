@@ -4,6 +4,7 @@ from ._state import manager
 
 router = APIRouter(prefix="", tags=["telemetry"])
 
+
 @router.get("/telemetry")
 async def telemetry():
     """
@@ -11,6 +12,7 @@ async def telemetry():
     """
     batchers = getattr(manager, "batchers", {}) or {}
     return {k: v.stats() for k, v in batchers.items()}
+
 
 @router.get("/queue/{task_id}")
 async def queue_snapshot(task_id: str):
