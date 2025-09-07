@@ -146,7 +146,8 @@ uvicorn rag_llm_api_pipeline.api.server:app --host 0.0.0.0 --port 8000
 ```
 
 ### cURL Query
-```bash
+
+```bash```
 curl -X POST http://localhost:8000/query \
      -H "Content-Type: application/json" \
      -d '{"system": "TestSystem", "question": "What does error E204 indicate?"}'

@@ -44,9 +44,9 @@ This monorepo contains **two independently published PyPI packages**:
 
 ---
 
-## 🚀 Quickstart
+## Quickstart
 
-### ⚙️ Required Setup
+### Required Setup
 
 Before starting the orchestrator, always make sure your working directory contains:
 
@@ -82,18 +82,18 @@ krionis-orchestrator stop
 krionis-orchestrator restart
 ```
 
-###Options
+### Options
 
 	--host (default: 0.0.0.0) – bind address
 	--port (default: 8080) – port to serve on
 	--workers (default: 1) – number of uvicorn workers
 	--log-file – optional path to capture logs
 
-###Developer Mode
+### Developer Mode
 
 To run in the foreground with hot-reload (auto-restart on code changes):
 ```bash
 krionis-orchestrator dev --host 127.0.0.1 --port 8080
 ```
-##The CLI works the same on Linux, macOS, and Windows.
+## The CLI works the same on Linux, macOS, and Windows.
 
