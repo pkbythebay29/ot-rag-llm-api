@@ -5,7 +5,7 @@ with open("README.md", encoding="utf-8") as f:
 
 setup(
     name="krionis-orchestrator",
-    version="0.2.1",
+    version="0.3.0",
     author="pkbythebay29",
     author_email="kannan@haztechrisk.org",
     description="Krionis Orchestrator — agentic batching and coordination on top of the Krionis Pipeline",
@@ -28,4 +28,12 @@ setup(
         "Homepage": "https://pypi.org/project/krionis-orchestrator/",
         "Source": "https://github.com/pkbythebay29/ot-rag-llm-api",
     },
+    entry_points={
+    "console_scripts": [
+        # New CLI
+        "krionis-orchestrator = rag_orchestrator.cli.main:main",
+        # Optional: keep the python -m path as a thin wrapper if you want
+        # "rag-orchestrator = rag_orchestrator.cli.main:main",
+        ],
+    }, 
 )

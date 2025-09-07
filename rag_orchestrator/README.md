@@ -31,8 +31,55 @@ It enables **batching, multi-agent workflows, and coordination** for low-latency
 
 ## 🚀 Quickstart
 
+### ⚙️ Required Setup
+
+Before starting the orchestrator, always make sure your working directory contains:
+
+- **`config\system.yaml`** – the main configuration file used by both the orchestrator and the pipeline.  
+- **`data\manual\`** – a directory with manually curated data (shared by both the pipeline and orchestrator).
+
+These must be present in the directory where you launch the CLI (`pwd` on Linux/macOS, current folder in Windows).
+
+
 Install:
 
 ```bash
 pip install krionis-orchestrator
 ```
+
+### Krionis Orchestrator CLI
+
+The orchestrator ships with a cross-platform CLI, installed as `krionis-orchestrator`.  
+It lets you start, stop, restart, and inspect the orchestrator.
+
+### Basic Usage
+
+```bash
+# Start the orchestrator (detached in background)
+krionis-orchestrator start --host 0.0.0.0 --port 8080
+
+# Check if it's running
+krionis-orchestrator status
+# → Running (pid 12345, uptime 00:02:17).
+
+# Stop the orchestrator
+krionis-orchestrator stop
+
+# Restart the orchestrator
+krionis-orchestrator restart
+```
+
+###Options
+
+	--host (default: 0.0.0.0) – bind address
+	--port (default: 8080) – port to serve on
+	--workers (default: 1) – number of uvicorn workers
+	--log-file – optional path to capture logs
+
+###Developer Mode
+
+To run in the foreground with hot-reload (auto-restart on code changes):
+```bash
+krionis-orchestrator dev --host 127.0.0.1 --port 8080
+```
+##The CLI works the same on Linux, macOS, and Windows.

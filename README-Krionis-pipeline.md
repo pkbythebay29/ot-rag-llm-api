@@ -43,6 +43,15 @@ knowledge, manuals, and historical data — securely, offline, and at minimal co
 
 ## 🚀 Quickstart
 
+### ⚙️ Required Setup
+
+Before starting the orchestrator, always make sure your working directory contains:
+
+- **`config\system.yaml`** – the main configuration file used by both the orchestrator and the pipeline.  
+- **`data\manual\`** – a directory with manually curated data (shared by both the pipeline and orchestrator).
+
+These must be present in the directory where you launch the CLI (`pwd` on Linux/macOS, current folder in Windows).
+
 Install:
 
 ```bash

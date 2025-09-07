@@ -1,9 +1,9 @@
 import asyncio, os
 from rag_orchestrator.runtime.batcher_pool import BatcherPool
-from batching.gatekeeper import Gatekeeper, TenantPolicy
+from rag_orchestrator.batching.gatekeeper import Gatekeeper, TenantPolicy
 from .config_bridge import load_bridge_config, resolve_system_yaml
 from ._state_systems import ProviderPool
-from runtime.manager import AgentManager
+from rag_orchestrator.runtime.manager import AgentManager
 
 DEFAULT_SYSTEM = os.getenv("SYSTEM_NAME")
 SYSTEMS_ROOT = os.getenv("SYSTEMS_ROOT", "config/systems")

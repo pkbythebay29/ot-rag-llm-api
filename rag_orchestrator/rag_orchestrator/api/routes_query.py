@@ -12,7 +12,7 @@ from .config_bridge import resolve_system_yaml
 from ..providers.rag_llm_api_provider import RagLLMApiProvider
 
 # ### NEW
-from ..batching.microbatch import AsyncMicroBatcher
+from rag_orchestrator.batching.microbatch import AsyncMicroBatcher
 import asyncio
 
 router = APIRouter(prefix="", tags=["query"])

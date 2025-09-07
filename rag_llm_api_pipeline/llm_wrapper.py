@@ -61,7 +61,7 @@ if tokenizer.pad_token_id is None and tokenizer.eos_token_id is not None:
 
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_NAME,
-    torch_dtype=_dtype,
+    dtype=_dtype,
     device_map="auto" if _device == "cuda" else None,
     trust_remote_code=True,
 )
@@ -70,7 +70,7 @@ model = AutoModelForCausalLM.from_pretrained(
 pipe_kwargs = {
     "model": model,
     "tokenizer": tokenizer,
-    "model_kwargs": {"torch_dtype": _dtype},
+    "model_kwargs": {"dtype": _dtype},
 }
 if _device != "cuda":
     pipe_kwargs["device"] = -1

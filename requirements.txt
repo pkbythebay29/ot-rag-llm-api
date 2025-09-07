@@ -9,7 +9,10 @@ pydantic>=2.7
 pyyaml>=6.0.1
 pytesseract>=0.3.10
 pillow>=10.3
-moviepy>=1.0.3
+moviepy==1.0.2
 pymupdf>=1.24.5
 openai-harmony>=0.0.3
 tqdm>=4.66
+SpeechRecognition>=3.8.1
+typer>=0.9
+psutil>=5.9

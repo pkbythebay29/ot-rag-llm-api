@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Callable, Dict, Any, Awaitable
-from ..batching.microbatch import AsyncMicroBatcher
+from rag_orchestrator.batching.microbatch import AsyncMicroBatcher
 
 TaskKey = str
 
