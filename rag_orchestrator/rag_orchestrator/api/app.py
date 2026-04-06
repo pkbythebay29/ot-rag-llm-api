@@ -10,7 +10,7 @@ from . import routes_query
 
 load_builtin_agents()
 
-app = FastAPI(title="RAG Orchestrator", version="0.1.0")
+app = FastAPI(title="RAG Orchestrator", version="1.0.0")
 
 # CORS for local UI
 app.add_middleware(

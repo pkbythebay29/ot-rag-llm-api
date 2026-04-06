@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
+## [1.0.0] - 2026-04-06
+
+### Added
+- Mandatory HITL-controlled query flow for flagged outputs
+- Review queue persistence with reviewer notes and final-response preservation
+- Append-only audit trace retrieval endpoints
+- Agent lifecycle controls, retrieval cache inspection, and manual cache rebuild APIs
+- Split built-in UX for operator, telemetry, runtime, configuration, and records views
+- SQLite metadata store for response ratings and review outcomes
+- Docker packaging for the integrated platform
+- Expanded OpenAPI-aligned documentation and operator guidance
+
+### Changed
+- Default local runtime now uses a smaller CPU-friendly quantized model profile
+- Orchestrated queries now follow the same controlled-query path as direct queries
+- Telemetry refresh is now YAML-configurable
+
+### Fixed
+- Agent startup no longer eagerly loads the provider path
+- Query execution is isolated in a worker process so the web server remains responsive during model warm-up failures
+
 ## [0.7.1] - 2025-08-12
 ###Added
     _StopOnSequences now:

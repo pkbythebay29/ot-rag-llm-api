@@ -1,11 +1,20 @@
-# Krionis Orchestrator
+# Krionis Orchestrator 1.0
 
-A lightweight orchestration runtime built on top of **Krionis Pipeline**.  
-It enables **batching, multi-agent workflows, and coordination** for low-latency, multi-user RAG systems.
+Krionis Orchestrator is the agent runtime that sits on top of Krionis Pipeline. It adds agent lifecycle control, routed controlled queries, telemetry, capacity signals, and an API-first orchestration layer for teams building local AI systems in secure environments.
 
 ---
 
-## 🤖 Key Features
+## What Is New In 1.0
+
+- Controlled orchestrator queries routed through the same HITL and audit path as direct queries
+- Agent start, stop, list, and readiness controls exposed through the API
+- Capacity signaling for whether another agent can be started safely
+- Dedicated telemetry and runtime diagnostics surfaces
+- Frontend-agnostic lifecycle and route APIs for custom applications
+- Better startup behavior by avoiding eager provider initialization
+- Docker-ready deployment path when paired with Krionis Pipeline
+
+## Core Capabilities
 
 ⚡ **Batching & Microbatching**  
 - Queueing + scheduling for efficient parallel queries  

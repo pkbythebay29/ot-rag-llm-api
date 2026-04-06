@@ -5,10 +5,10 @@ with open("README.md", encoding="utf-8") as f:
 
 setup(
     name="krionis-orchestrator",
-    version="0.3.5",
+    version="1.0.0",
     author="pkbythebay29",
     author_email="kannan@haztechrisk.org",
-    description="Krionis Orchestrator — agentic batching and coordination on top of the Krionis Pipeline",
+    description="Krionis Orchestrator - agent lifecycle, routing, and telemetry on top of Krionis Pipeline",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/pkbythebay29/ot-rag-llm-api",
@@ -16,7 +16,7 @@ setup(
     include_package_data=True,
     python_requires=">=3.8",
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3 :: Only",
         "License :: OSI Approved :: MIT License",

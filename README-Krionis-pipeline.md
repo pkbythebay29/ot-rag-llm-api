@@ -1,16 +1,27 @@
-# Krionis Pipeline (formerly RAG-LLM-API-Pipeline)
+# Krionis Pipeline 1.0
 
-A fully local, GPU-poor, **multimodal Retrieval-Augmented Generation (RAG)** system powered by open-source local LLMs.  
-Designed for **secure technology environments**, (such as OT, secure, airgapped applications, edge) it provides AI-assisted access to technical 
-knowledge, manuals, and historical data — securely, offline, and at minimal cost.
+Krionis Pipeline is a local-first Retrieval-Augmented Generation platform for controlled, auditable AI workflows. It is designed for secure and airgapped environments where teams need API-driven retrieval, human review controls, traceability, and a practical operator experience without depending on cloud infrastructure.
 
-> ⚠️ Backward compatibility:  
+Backward compatibility is preserved:
 
-> - Existing imports (`import rag_llm_api_pipeline`) and CLI (`rag-cli`) still work.  
+- `import rag_llm_api_pipeline` still works
+- `rag-cli` still works
+- `krionis-cli` is available as the branded CLI entry point
 
----
+## What Is New In 1.0
 
-## ✅ Key Features
+- Mandatory HITL gating for flagged outputs
+- Review queue persistence with original and final responses stored separately
+- Append-only audit tracing across query, retrieval, generation, and signoff
+- SQLite-backed result metadata for `Good` and `Bad` feedback plus review outcomes
+- API-driven index visibility and manual cache rebuild operations
+- Split operator UX for control, telemetry, runtime, configuration, records, and review
+- CPU-friendly quantized default model profile for local deployment
+- Isolated generation worker to keep the API responsive during model load or failure
+- Docker packaging for integrated platform deployment
+- Expanded API documentation for custom frontend development
+
+## Core Capabilities
 
 🔍 **Retrieval-Augmented Generation (RAG)**  
 - FAISS/HNSW vector indices  
@@ -41,37 +52,38 @@ knowledge, manuals, and historical data — securely, offline, and at minimal co
 
 ---
 
-## 🚀 Quickstart
+## Quickstart
 
-### ⚙️ Required Setup
+### Required Setup
 
-Before starting the orchestrator, always make sure your working directory contains:
+Before starting the platform, make sure your working directory contains:
 
-- **`config\system.yaml`** – the main configuration file used by both the orchestrator and the pipeline.  
-- **`data\manual\`** – a directory with manually curated data (shared by both the pipeline and orchestrator).
-
-These must be present in the directory where you launch the CLI (`pwd` on Linux/macOS, current folder in Windows).
+- `config/system.yaml`
+- `data/manuals/`
 
 Install:
 
 ```bash
 pip install krionis-pipeline
+```
 
+Build the retrieval index and start the API:
 
-###🛠️ Per-system configuration via system.yaml for flexible deployments
-###🔐 Fully local operation — no cloud dependencies required
+```bash
+krionis-cli build-index --system TestSystem
+uvicorn rag_llm_api_pipeline.api.server:app --host 127.0.0.1 --port 8000
+```
 
-###✅ Quickstart guide and prebuilt example included
-###✅ Runs on CPU or GPU with smart memory management
-###✅ Web UI + CLI + API, all in one package
+Open:
 
----
+- `http://127.0.0.1:8000/` for the operator console
+- `http://127.0.0.1:8000/api/docs` for the API reference
+- `http://127.0.0.1:8000/ui/reviews` for the review queue
 
-## 📦 Installation
+## Installation
 
 ```bash
 pip install krionis-pipeline
-
 ```
 
 ---

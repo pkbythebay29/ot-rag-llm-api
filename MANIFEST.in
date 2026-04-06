@@ -10,4 +10,5 @@ recursive-include rag_llm_api_pipeline/web *.html
 recursive-include rag_llm_api_pipeline/ui *.html
 
 recursive-include config *.yaml
-recursive-include data/manuals *
+prune data/manuals
+include data/manuals/sample.txt
