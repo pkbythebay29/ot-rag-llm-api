@@ -97,3 +97,19 @@ krionis-orchestrator dev --host 127.0.0.1 --port 8080
 ```
 ## The CLI works the same on Linux, macOS, and Windows.
 
+## Documentation
+
+Krionis now includes a dedicated docs site scaffold for API consumers and platform integrators.
+
+- Interactive API docs: `/api/docs`
+- ReDoc reference: `/api/reference`
+- Static docs source: `docs/`
+- Docs configuration: `mkdocs.yml`
+
+Build the docs site locally with:
+
+```bash
+pip install -r requirements-docs.txt
+mkdocs build --strict
+```
+

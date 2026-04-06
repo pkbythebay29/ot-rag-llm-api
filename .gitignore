@@ -57,6 +57,10 @@ htmlcov/
 *.cover
 coverage.xml
 *.test.xml
+.pytest_cache/
+.tmp/
+site/
+external/
 
 # PyInstaller
 *.spec

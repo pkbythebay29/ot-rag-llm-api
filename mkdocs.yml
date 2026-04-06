@@ -1,0 +1,38 @@
+site_name: Krionis Platform Docs
+site_url: https://docs.krionis.com/
+repo_url: https://github.com/pkbythebay29/ot-rag-llm-api
+repo_name: pkbythebay29/ot-rag-llm-api
+site_description: Industry-grade documentation for the Krionis HITL-controlled RAG platform.
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - tables
+  - fenced_code
+  - attr_list
+
+nav:
+  - Overview: index.md
+  - Quickstart: quickstart.md
+  - Query Lifecycle: query-lifecycle.md
+  - Authentication: authentication.md
+  - HITL Review: hitl-review.md
+  - Audit and Traceability: audit-traceability.md
+  - API Reference: api-reference.md
+  - Integration Examples: examples.md
+  - Deployment: deployment.md

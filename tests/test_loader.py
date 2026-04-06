@@ -112,3 +112,35 @@ def test_root_ui_explains_hitl_and_audit(app_client):
     assert "Krionis HITL RAG" in response.text
     assert "/ui/reviews" in response.text
     assert "mandatory review" in response.text.lower()
+
+
+def test_platform_metadata_and_audit_routes(app_client):
+    client = app_client["client"]
+    review_id = _submit_flagged_query(client)
+
+    pending = client.get(
+        "/review/pending", headers={"x-api-key": "test-review-key"}
+    ).json()["items"][0]
+    trace_id = pending["trace_id"]
+
+    metadata = client.get("/system/metadata")
+    assert metadata.status_code == 200
+    assert metadata.json()["system_name"]
+
+    review_lookup = client.get(
+        f"/review/{review_id}", headers={"x-api-key": "test-review-key"}
+    )
+    assert review_lookup.status_code == 200
+    assert review_lookup.json()["id"] == review_id
+
+    trace_events = client.get(
+        f"/audit/traces/{trace_id}", headers={"x-api-key": "test-review-key"}
+    )
+    assert trace_events.status_code == 200
+    assert trace_events.json()["trace_id"] == trace_id
+
+    review_events = client.get(
+        f"/audit/reviews/{review_id}", headers={"x-api-key": "test-review-key"}
+    )
+    assert review_events.status_code == 200
+    assert review_events.json()["review_id"] == review_id

@@ -33,6 +33,32 @@ def append_audit_record(record: dict[str, Any]) -> dict[str, Any]:
     return payload
 
 
+def get_audit_events(limit: int = 100) -> list[dict[str, Any]]:
+    path = get_audit_log_path()
+    if not os.path.exists(path):
+        return []
+
+    with open(path, "r", encoding="utf-8") as handle:
+        lines = handle.readlines()
+
+    events = [json.loads(line) for line in lines if line.strip()]
+    return events[-limit:]
+
+
+def get_trace_events(trace_id: str) -> list[dict[str, Any]]:
+    return [
+        event for event in get_audit_events(limit=5000) if event.get("trace_id") == trace_id
+    ]
+
+
+def get_review_events(review_id: str) -> list[dict[str, Any]]:
+    return [
+        event
+        for event in get_audit_events(limit=5000)
+        if event.get("review_id") == review_id
+    ]
+
+
 def log_query_event(
     *,
     trace_id: str,

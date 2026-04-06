@@ -192,3 +192,12 @@ MIT License
 ## 📧 Contact
 
 For issues, improvements, or contributions, please open an issue or PR.
+
+## Documentation
+
+The repository includes a documentation portal scaffold for developers building on top of the Krionis API.
+
+- Interactive API docs: `/api/docs`
+- ReDoc reference: `/api/reference`
+- Static docs source: `docs/`
+- Docs build config: `mkdocs.yml`

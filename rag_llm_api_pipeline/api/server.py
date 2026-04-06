@@ -8,8 +8,10 @@ import uvicorn
 from fastapi import FastAPI, Header, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+from rag_llm_api_pipeline import __version__
+from rag_llm_api_pipeline.api.platform_routes import router as platform_router
 from rag_llm_api_pipeline.api.review_routes import router as review_router
 from rag_llm_api_pipeline.config_loader import load_config
 from rag_llm_api_pipeline.core import audit
@@ -37,10 +39,41 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+OPENAPI_TAGS = [
+    {
+        "name": "Health",
+        "description": "Readiness and liveness endpoints for the Krionis API service.",
+    },
+    {
+        "name": "Query",
+        "description": "Primary query interface for submitting RAG requests through the Krionis HITL control layer.",
+    },
+    {
+        "name": "Review",
+        "description": "Human-in-the-loop review queue operations for approving or rejecting pending outputs.",
+    },
+    {
+        "name": "Platform",
+        "description": "System metadata and append-only audit retrieval endpoints for platform integrations.",
+    },
+    {
+        "name": "UI",
+        "description": "Internal browser-based interfaces used by operators and reviewers.",
+    },
+]
+
 
 class QueryRequest(BaseModel):
-    system: str
-    question: str
+    system: str = Field(
+        ...,
+        description="Logical system identifier configured in config/system.yaml.",
+        examples=["TestSystem"],
+    )
+    question: str = Field(
+        ...,
+        description="Natural-language question to send through the Krionis query pipeline.",
+        examples=["What is the restart sequence for this machine?"],
+    )
 
 
 def _build_trace(trace_id: str, status: str, stats: dict[str, Any]) -> dict[str, Any]:
@@ -82,8 +115,26 @@ def _format_stats(stats: dict[str, Any], cfg: dict[str, Any]) -> dict[str, Any]:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="RAG LLM API Pipeline")
+    app = FastAPI(
+        title="Krionis Pipeline API",
+        summary="Human-in-the-loop controlled RAG API for compliant industrial knowledge workflows.",
+        description=(
+            "Krionis exposes a traceable RAG API with mandatory HITL controls for flagged responses, "
+            "append-only audit logging, and future-ready orchestrator hooks. "
+            "Use the interactive docs for request/response schemas and the review/audit APIs to build external tooling."
+        ),
+        version=__version__,
+        contact={
+            "name": "Krionis Platform",
+            "url": "https://krionis.com",
+        },
+        openapi_tags=OPENAPI_TAGS,
+        docs_url="/api/docs",
+        redoc_url="/api/reference",
+        openapi_url="/api/openapi.json",
+    )
     app.include_router(review_router)
+    app.include_router(platform_router)
     app.include_router(ui_router)
 
     @app.get("/health", tags=["Health"])
