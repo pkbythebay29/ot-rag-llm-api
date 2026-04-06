@@ -5,10 +5,18 @@ import sys
 import time
 from typing import Any
 
-import psutil
-import torch
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
+
+try:
+    import psutil
+except ImportError:  # pragma: no cover - optional runtime dependency
+    psutil = None  # type: ignore[assignment]
+
+try:
+    import torch
+except ImportError:  # pragma: no cover - optional runtime dependency
+    torch = None  # type: ignore[assignment]
 
 from rag_llm_api_pipeline.core import audit
 from rag_llm_api_pipeline.core.feedback import record_quality_feedback
@@ -27,6 +35,33 @@ from rag_llm_api_pipeline.db import metadata_store, review_store
 
 router = APIRouter(tags=["Platform"])
 SERVER_STARTED_AT = time.time()
+
+
+def _cpu_percent() -> float:
+    if psutil is None:
+        return 0.0
+    return float(psutil.cpu_percent(interval=None))
+
+
+def _memory_snapshot() -> dict[str, float]:
+    if psutil is None:
+        return {
+            "available_gb": 0.0,
+            "total_gb": 0.0,
+            "working_set_gb": 0.0,
+        }
+
+    memory = psutil.virtual_memory()
+    proc = psutil.Process(os.getpid())
+    return {
+        "available_gb": round(memory.available / (1024**3), 2),
+        "total_gb": round(memory.total / (1024**3), 2),
+        "working_set_gb": round(proc.memory_info().rss / (1024**3), 2),
+    }
+
+
+def _cuda_available() -> bool:
+    return bool(torch is not None and torch.cuda.is_available())
 
 
 def _ensure_orchestrator_import_path() -> None:
@@ -90,10 +125,10 @@ def _find_agent_handle(agent_ref: str) -> Any | None:
 
 
 def _get_capacity_status(active_agents_count: int) -> dict[str, Any]:
-    memory = psutil.virtual_memory()
-    cpu_percent = psutil.cpu_percent(interval=None)
-    available_gb = round(memory.available / (1024**3), 2)
-    total_gb = round(memory.total / (1024**3), 2)
+    memory = _memory_snapshot()
+    cpu_percent = _cpu_percent()
+    available_gb = memory["available_gb"]
+    total_gb = memory["total_gb"]
     reserved_buffer_gb = 2.0
     estimated_agent_gb = 1.5
     recommended_max_agents = max(
@@ -127,10 +162,7 @@ def _read_log_tail(path: str, max_lines: int = 25) -> list[str]:
 
 
 def _runtime_summary() -> dict[str, Any]:
-    proc = psutil.Process(os.getpid())
-    vm = psutil.virtual_memory()
-    ws_gb = round(proc.memory_info().rss / (1024**3), 2)
-    available_gb = round(vm.available / (1024**3), 2)
+    memory = _memory_snapshot()
     query_worker = get_query_worker_status()
     recent_logs = _read_log_tail(os.path.join(os.getcwd(), "uvicorn.err.log"))
     hint = "Server reachable."
@@ -144,12 +176,12 @@ def _runtime_summary() -> dict[str, Any]:
     elif "runtimeerror" in joined or "memory" in joined:
         hint = "Recent logs suggest a runtime or memory-related failure."
     return {
-        "pid": proc.pid,
+        "pid": os.getpid(),
         "uptime_sec": round(time.time() - SERVER_STARTED_AT, 1),
         "sampled_at": utc_now_iso(),
-        "working_set_gb": ws_gb,
-        "available_memory_gb": available_gb,
-        "cpu_percent": psutil.cpu_percent(interval=None),
+        "working_set_gb": memory["working_set_gb"],
+        "available_memory_gb": memory["available_gb"],
+        "cpu_percent": _cpu_percent(),
         "hint": hint,
         "query_worker": query_worker,
         "index_worker": get_index_worker_status(),
@@ -165,8 +197,8 @@ def _resolved_model_runtime(config: dict[str, Any]) -> dict[str, str]:
     if use_cpu:
         effective_device = "cpu"
     elif configured_device == "auto":
-        effective_device = "cuda" if torch.cuda.is_available() else "cpu"
-    elif configured_device == "cuda" and torch.cuda.is_available():
+        effective_device = "cuda" if _cuda_available() else "cpu"
+    elif configured_device == "cuda" and _cuda_available():
         effective_device = "cuda"
     else:
         effective_device = "cpu"
