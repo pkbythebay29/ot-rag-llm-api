@@ -13,6 +13,7 @@ try:
 except ImportError:  # pragma: no cover - compatibility fallback
     from torch.quantization import quantize_dynamic
 
+
 def _load_cfg():
     return load_config()
 

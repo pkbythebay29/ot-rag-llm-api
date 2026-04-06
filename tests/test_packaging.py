@@ -15,7 +15,9 @@ def test_packaged_defaults_bootstrap_into_runtime_home(
     config_loader = importlib.reload(config_loader)
     cfg = config_loader.load_config()
 
-    assert Path(config_loader.get_config_path()) == runtime_home / "config" / "system.yaml"
+    assert (
+        Path(config_loader.get_config_path()) == runtime_home / "config" / "system.yaml"
+    )
     assert (runtime_home / "config" / "system.yaml").exists()
     assert (runtime_home / "data" / "manuals" / "sample.txt").exists()
     assert cfg["settings"]["data_dir"] == str(
