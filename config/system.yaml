@@ -28,6 +28,7 @@ llm:
   repetition_penalty: 1.05
   no_repeat_ngram_size: 3
   stop_sequences: ["\n"]
+  prompt_version: prompt-v1
 
   preset: baseline  # baseline | beam | explore | drafts
 
@@ -86,3 +87,42 @@ settings:
   show_query_time: true
   show_token_speed: true
   show_chunk_timing: true
+
+hitl:
+  review_keywords:
+    - dosage
+    - treatment
+    - compliance
+    - gmp
+    - validation
+  response_length_threshold: 800
+  response_preview_chars: 280
+  model_version: model-version-placeholder
+  prompt_version: prompt-v1
+
+review_store:
+  sqlite_path: data/reviews/review_queue.sqlite3
+
+audit:
+  log_path: data/audit/audit_log.jsonl
+
+feedback:
+  corrections_path: data/feedback/corrections.jsonl
+
+security:
+  api_key: ""
+  api_key_env_var: KRIONIS_REVIEW_API_KEY
+
+system_metadata:
+  system_name: Krionis HITL RAG API
+  version: 0.9.0-hitl
+  component_type: GAMP Category 5
+  agent_system_id: krionis-rag-api
+  module_classification:
+    configuration:
+      - config/system.yaml
+    custom_modules:
+      - rag_llm_api_pipeline/core
+      - rag_llm_api_pipeline/db
+      - rag_llm_api_pipeline/api
+      - rag_llm_api_pipeline/ui

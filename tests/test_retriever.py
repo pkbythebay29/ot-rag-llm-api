@@ -1,12 +1,22 @@
-from rag_llm_api_pipeline.retriever import get_answer
+import json
 
 
-def test_get_answer():
-    system_yaml = "rag_llm_api_pipeline/config/system.yaml"
-    with open(system_yaml, "w") as f:
-        f.write("assets:\\n  - name: TestAsset\\n    docs:\\n      - manuals/test.txt")
+def test_normal_query_is_auto_approved(app_client):
+    client = app_client["client"]
+    response = client.post(
+        "/query",
+        json={"system": "TestSystem", "question": "What is the restart sequence?"},
+        headers={"x-user-id": "alice"},
+    )
 
-    answer, sources = get_answer("TestAsset", "What is this about?")
-    assert isinstance(answer, str)
-    assert isinstance(sources, list)
-    assert len(sources) > 0
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "approved"
+    assert "answer" in body
+    assert body["sources"] == ["Chunk 1"]
+
+    audit_lines = app_client["audit_log"].read_text(encoding="utf-8").strip().splitlines()
+    audit_record = json.loads(audit_lines[-1])
+    assert audit_record["status"] == "approved"
+    assert audit_record["reviewer_decision"] == "auto_approved"
+    assert audit_record["final_approved_response"] == body["answer"]

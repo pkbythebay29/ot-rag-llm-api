@@ -2,26 +2,42 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>RAG LLM</title>
+<title>Krionis HITL RAG</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  :root { --bg:#f7f7f8; --card:#ffffff; --text:#111; --muted:#666; --accent:#0f62fe; }
+  :root {
+    --bg:#f3efe6;
+    --card:#fffdf8;
+    --text:#182118;
+    --muted:#5f695f;
+    --accent:#1d6b52;
+    --accent2:#a7592a;
+    --border:#d8cfbf;
+  }
   *{box-sizing:border-box}
   body{
-    margin:0; background:var(--bg); color:var(--text);
-    font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Arial,sans-serif;
+    margin:0; color:var(--text);
+    font:16px/1.5 Georgia, "Times New Roman", serif;
+    background:
+      radial-gradient(circle at top left, rgba(29,107,82,.14), transparent 30%),
+      linear-gradient(180deg, #fbf7ef 0%, var(--bg) 100%);
     display:flex; align-items:center; justify-content:center; min-height:100vh;
   }
   .wrap{ width:100%; max-width:820px; padding:24px; }
   .card{
-    background:var(--card); border:1px solid #e5e7eb; border-radius:12px;
-    padding:24px; box-shadow:0 1px 2px rgba(0,0,0,.03);
+    background:var(--card); border:1px solid var(--border); border-radius:18px;
+    padding:24px; box-shadow:0 14px 32px rgba(57,47,27,.08);
   }
-  h1{margin:0 0 12px; font-size:22px}
+  h1{margin:0 0 12px; font-size:28px}
   p.sub{margin:0 0 20px; color:var(--muted)}
+  .guide{
+    margin:0 0 20px; padding:14px; border:1px solid var(--border); border-radius:14px;
+    background:#fff8ee; color:var(--muted);
+  }
+  .guide strong{ color:var(--text); }
   label{display:block; font-weight:600; margin:14px 0 6px}
   input, textarea{
-    width:100%; border:1px solid #d1d5db; border-radius:10px; padding:12px 14px;
+    width:100%; border:1px solid var(--border); border-radius:10px; padding:12px 14px;
     font:inherit; outline:none; background:#fff;
   }
   textarea{min-height:120px; resize:vertical}
@@ -29,8 +45,16 @@
     margin-top:14px; background:var(--accent); color:#fff; border:0; border-radius:10px;
     padding:12px 16px; font-weight:600; cursor:pointer;
   }
+  a.linkbtn{
+    display:inline-block; margin-top:14px; margin-left:10px; background:var(--accent2); color:#fff;
+    border-radius:10px; padding:12px 16px; font-weight:600; text-decoration:none;
+  }
   #answer, #stats, #chunks{
-    margin-top:18px; white-space:pre-wrap; background:#fafafa; border:1px solid #eee;
+    margin-top:18px; white-space:pre-wrap; background:#fafafa; border:1px solid var(--border);
+    border-radius:10px; padding:14px;
+  }
+  #audit{
+    margin-top:18px; white-space:pre-wrap; background:#fff8ee; border:1px solid var(--border);
     border-radius:10px; padding:14px;
   }
   #stats, #chunks{ color:#333; font-size:14px }
@@ -52,8 +76,9 @@
 <body>
   <div class="wrap">
     <div class="card">
-      <h1>RAG-LLM-API-PIPELINE</h1>
-      <p class="sub">Ask. Retrieve. Answer. Timings & token speed included.</p>
+      <h1>Krionis HITL RAG</h1>
+      <p class="sub">Ask. Retrieve. Review when needed. Every result now carries a traceable status.</p>
+      <div class="guide"><strong>HITL control point:</strong> responses containing dosage, treatment, compliance, GMP, validation, or unusually long outputs are routed into mandatory review. Open <code>/ui/reviews</code> to approve or reject them with an API key. Launch the API with <code>uvicorn rag_llm_api_pipeline.api.server:app --host 127.0.0.1 --port 8000</code>.</div>
 
       <div class="row">
         <div>
@@ -66,6 +91,7 @@
       <textarea id="question" placeholder="Type your question and press Enter or click Submit"></textarea>
 
       <button id="submit">Submit</button>
+      <a class="linkbtn" href="/ui/reviews" target="_blank" rel="noreferrer">Open Review Dashboard</a>
 
       <div class="spinner" id="spinner">
         <div class="dot"></div><div class="dot"></div><div class="dot"></div>
@@ -73,6 +99,7 @@
       </div>
 
       <div id="answer" style="display:none"></div>
+      <div id="audit" style="display:none"></div>
       <div id="stats" style="display:none"></div>
       <div id="chunks" style="display:none"></div>
     </div>
@@ -80,6 +107,7 @@
 
 <script>
   const ans = document.getElementById("answer");
+  const auditBox = document.getElementById("audit");
   const statsBox = document.getElementById("stats");
   const chunksBox = document.getElementById("chunks");
   const spin = document.getElementById("spinner");
@@ -93,7 +121,7 @@
       ans.style.display="block"; ans.textContent = "Please enter both System and Question.";
       return;
     }
-    ans.style.display="none"; statsBox.style.display="none"; chunksBox.style.display="none";
+    ans.style.display="none"; auditBox.style.display="none"; statsBox.style.display="none"; chunksBox.style.display="none";
     spin.style.display="flex";
 
     // Start timer
@@ -116,7 +144,17 @@
       clearInterval(timerInterval);
 
       ans.style.display="block";
-      ans.textContent = json.answer || "No answer.";
+      if (json.status === "pending_review") {
+        ans.textContent = `Queued for human review.\n\nPreview:\n${json.response_preview || "No preview."}\n\nOpen /ui/reviews to approve or reject.`;
+      } else {
+        ans.textContent = json.answer || "No answer.";
+      }
+
+      auditBox.style.display = "block";
+      auditBox.textContent =
+        `Status: ${json.status || "unknown"}\n` +
+        `Trace ID: ${json.trace_id || "n/a"}\n` +
+        `Review ID: ${json.review_id || "n/a"}`;
 
       // Stats
       if(json.stats){

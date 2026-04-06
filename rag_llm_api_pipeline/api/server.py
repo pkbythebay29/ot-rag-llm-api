@@ -1,26 +1,35 @@
-import os
 import logging
-from typing import Any, Optional
+import os
+from importlib.resources import as_file, files
+from typing import Any
+from uuid import uuid4
 
-from fastapi import FastAPI
+import uvicorn
+from fastapi import FastAPI, Header, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from importlib.resources import files, as_file
-
-from rag_llm_api_pipeline.retriever import get_answer
+from rag_llm_api_pipeline.api.review_routes import router as review_router
 from rag_llm_api_pipeline.config_loader import load_config
-
-import uvicorn
+from rag_llm_api_pipeline.core import audit
+from rag_llm_api_pipeline.core.hitl import (
+    create_review_item,
+    get_response_preview_chars,
+    get_version_placeholders,
+    requires_human_review,
+    utc_now_iso,
+)
+from rag_llm_api_pipeline.core.orchestrator import get_orchestrator
+from rag_llm_api_pipeline.core.security import get_user_id
+from rag_llm_api_pipeline.db import review_store
+from rag_llm_api_pipeline.ui.ui_routes import router as ui_router
 
 """
 FastAPI server for RAG LLM API Pipeline
 - Serves web UI (CWD -> env -> packaged)
 - /health and /query endpoints
 """
-
-app = FastAPI(title="RAG LLM API Pipeline")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,68 +43,161 @@ class QueryRequest(BaseModel):
     question: str
 
 
-@app.get("/health", tags=["Health"])
-def health() -> dict[str, str]:
-    logger.info("Health check called")
-    return {"status": "ok"}
+def _build_trace(trace_id: str, status: str, stats: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "trace_id": trace_id,
+        "status": status,
+        "steps": [
+            {"stage": "query_received", "timestamp": utc_now_iso()},
+            {"stage": "document_search_completed", "timestamp": utc_now_iso()},
+            {"stage": "hitl_evaluated", "timestamp": utc_now_iso()},
+        ],
+        "stats": stats,
+    }
 
 
-@app.post("/query", tags=["Query"], response_model=None)
-def query_system(request: QueryRequest) -> dict[str, Any] | JSONResponse:
-    cfg = load_config()
+def _format_stats(stats: dict[str, Any], cfg: dict[str, Any]) -> dict[str, Any]:
     show_qt = cfg.get("settings", {}).get("show_query_time", True)
     show_ts = cfg.get("settings", {}).get("show_token_speed", True)
     show_ct = cfg.get("settings", {}).get("show_chunk_timing", True)
 
-    try:
-        logger.info(
-            "Received query: system='%s', question='%s'",
-            request.system,
-            request.question,
+    if not isinstance(stats, dict) or not (show_qt or show_ts or show_ct):
+        return {}
+
+    formatted: dict[str, Any] = {}
+    if show_qt and "query_time_sec" in stats:
+        formatted["query_time_sec"] = stats["query_time_sec"]
+    if show_ts and "tokens_per_sec" in stats:
+        formatted.update(
+            {
+                "gen_time_sec": stats.get("gen_time_sec"),
+                "gen_tokens": stats.get("gen_tokens"),
+                "tokens_per_sec": stats.get("tokens_per_sec"),
+            }
         )
-        out = get_answer(request.system, request.question)
+    if show_ct and "retrieval" in stats:
+        formatted["retrieval"] = stats.get("retrieval", {})
+        formatted["chunks_meta"] = stats.get("chunks_meta", [])
+    return formatted
 
-        answer: Optional[str] = None
-        sources: list[Any] = []
-        stats: dict[str, Any] = {}
-        if isinstance(out, tuple):
-            if len(out) >= 2:
-                answer, sources = out[0], out[1]
-            if len(out) >= 3:
-                stats = out[2]
-        else:
-            answer = str(out)
 
-        resp: dict[str, Any] = {
-            "system": request.system,
-            "question": request.question,
-            "answer": answer,
-            "sources": sources,
-        }
+def create_app() -> FastAPI:
+    app = FastAPI(title="RAG LLM API Pipeline")
+    app.include_router(review_router)
+    app.include_router(ui_router)
 
-        if isinstance(stats, dict) and (show_qt or show_ts or show_ct):
-            s: dict[str, Any] = {}
-            if show_qt and "query_time_sec" in stats:
-                s["query_time_sec"] = stats["query_time_sec"]
-            if show_ts and "tokens_per_sec" in stats:
-                s.update(
-                    {
-                        "gen_time_sec": stats.get("gen_time_sec"),
-                        "gen_tokens": stats.get("gen_tokens"),
-                        "tokens_per_sec": stats.get("tokens_per_sec"),
-                    }
+    @app.get("/health", tags=["Health"])
+    def health() -> dict[str, str]:
+        logger.info("Health check called")
+        review_store.init_db()
+        return {"status": "ok"}
+
+    @app.post("/query", tags=["Query"], response_model=None)
+    def query_system(
+        payload: QueryRequest,
+        _: Request,
+        x_user_id: str | None = Header(default=None),
+    ) -> dict[str, Any] | JSONResponse:
+        cfg = load_config()
+        trace_id = str(uuid4())
+        user_id = get_user_id(x_user_id, default="anonymous")
+        model_version, prompt_version = get_version_placeholders()
+
+        try:
+            logger.info(
+                "Received query: system='%s', question='%s'",
+                payload.system,
+                payload.question,
+            )
+            result = get_orchestrator().run_query(
+                system_name=payload.system,
+                question=payload.question,
+            )
+            answer = str(result.get("answer") or "")
+            sources = list(result.get("sources") or [])
+            stats = dict(result.get("stats") or {})
+            retrieved_documents = list(result.get("retrieved_documents") or [])
+            formatted_stats = _format_stats(stats, cfg)
+            trace = _build_trace(trace_id, "evaluated", formatted_stats)
+
+            if requires_human_review(payload.question, answer):
+                review_item = create_review_item(
+                    payload.question,
+                    answer,
+                    system_id=payload.system,
+                    user_id=user_id,
+                    trace_id=trace_id,
+                    retrieved_documents=retrieved_documents,
+                    response_preview=answer[: get_response_preview_chars()],
                 )
-            if show_ct and "retrieval" in stats:
-                s["retrieval"] = stats.get("retrieval", {})
-                s["chunks_meta"] = stats.get("chunks_meta", [])
-            if s:
-                resp["stats"] = s
+                review_store.save_review(review_item)
+                trace["steps"].append(
+                    {"stage": "review_queued", "timestamp": utc_now_iso()}
+                )
+                audit.log_query_event(
+                    trace_id=trace_id,
+                    system_id=payload.system,
+                    query=payload.question,
+                    generated_response=answer,
+                    final_response=None,
+                    retrieved_documents=retrieved_documents,
+                    user_id=user_id,
+                    model_version=model_version,
+                    prompt_version=prompt_version,
+                    status="pending_review",
+                    reviewer_decision="pending_review",
+                    review_id=review_item["id"],
+                    execution_trace=trace,
+                    sources=sources,
+                )
+                response: dict[str, Any] = {
+                    "status": "pending_review",
+                    "trace_id": trace_id,
+                    "review_id": review_item["id"],
+                    "system": payload.system,
+                    "question": payload.question,
+                    "response_preview": review_item["response_preview"],
+                }
+                if formatted_stats:
+                    response["stats"] = formatted_stats
+                return response
 
-        return resp
+            trace["steps"].append({"stage": "auto_approved", "timestamp": utc_now_iso()})
+            audit.log_query_event(
+                trace_id=trace_id,
+                system_id=payload.system,
+                query=payload.question,
+                generated_response=answer,
+                final_response=answer,
+                retrieved_documents=retrieved_documents,
+                user_id=user_id,
+                model_version=model_version,
+                prompt_version=prompt_version,
+                status="approved",
+                reviewer_decision="auto_approved",
+                review_id=None,
+                execution_trace=trace,
+                sources=sources,
+            )
 
-    except Exception as e:
-        logger.exception("Error processing query")
-        return JSONResponse(status_code=500, content={"error": str(e)})
+            response = {
+                "status": "approved",
+                "trace_id": trace_id,
+                "system": payload.system,
+                "question": payload.question,
+                "answer": answer,
+                "sources": sources,
+            }
+            if formatted_stats:
+                response["stats"] = formatted_stats
+            return response
+
+        except Exception as exc:
+            logger.exception("Error processing query")
+            return JSONResponse(status_code=500, content={"error": str(exc)})
+
+    _mount_web(app)
+    return app
 
 
 def _dir_has_index_html(path: str) -> bool:
@@ -155,7 +257,7 @@ def _mount_web(app_: FastAPI) -> None:
     )
 
 
-_mount_web(app)
+app = create_app()
 
 
 def start_api_server() -> None:

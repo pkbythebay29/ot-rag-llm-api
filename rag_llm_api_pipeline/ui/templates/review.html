@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Krionis Review Dashboard</title>
+  <style>
+    :root {
+      --bg: #f3efe6;
+      --panel: #fffdf8;
+      --ink: #1f2a1f;
+      --muted: #5c675c;
+      --accent: #1f6f50;
+      --accent-2: #b3572f;
+      --border: #d8cfbf;
+      --danger: #a33d2f;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      background:
+        radial-gradient(circle at top left, rgba(31, 111, 80, 0.12), transparent 30%),
+        linear-gradient(180deg, #f9f5ec 0%, var(--bg) 100%);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+
+    .shell {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 18px 48px;
+    }
+
+    .hero {
+      margin-bottom: 24px;
+      padding: 24px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: rgba(255, 253, 248, 0.92);
+      box-shadow: 0 18px 40px rgba(62, 53, 34, 0.08);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1.05;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .auth {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .auth input,
+    .card textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font: inherit;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .card {
+      padding: 20px;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      box-shadow: 0 12px 24px rgba(62, 53, 34, 0.06);
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 14px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .block {
+      margin-bottom: 16px;
+    }
+
+    .block strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 0.95rem;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .response {
+      white-space: pre-wrap;
+      padding: 12px;
+      border-radius: 12px;
+      background: #f8f3ea;
+      border: 1px solid #e8dece;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font: inherit;
+      cursor: pointer;
+      color: #fff;
+      background: var(--accent);
+      transition: transform 0.18s ease, opacity 0.18s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+
+    button.secondary { background: var(--accent-2); }
+    button.danger { background: var(--danger); }
+
+    .status {
+      margin: 18px 0;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .empty {
+      padding: 28px;
+      border: 1px dashed var(--border);
+      border-radius: 16px;
+      text-align: center;
+      color: var(--muted);
+      background: rgba(255, 253, 248, 0.75);
+    }
+
+    @media (max-width: 720px) {
+      .auth {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <h1>Review Dashboard</h1>
+      <p>Human approval is the control point for regulated outputs. Load pending items with the review API key, edit the final response, and approve or reject with a preserved audit trail.</p>
+      <div class="auth">
+        <input id="api-key" type="password" placeholder="Enter review API key" />
+        <button type="button" onclick="loadPending()">Load Pending Reviews</button>
+      </div>
+      <div id="status" class="status">
+        {% if authorized %}
+          Pending reviews loaded with the current API key header.
+        {% else %}
+          Review data stays hidden until a valid API key is supplied.
+        {% endif %}
+      </div>
+    </section>
+
+    <section id="review-list" class="grid">
+      {% if pending_reviews %}
+        {% for item in pending_reviews %}
+          <article class="card" data-review-id="{{ item.id }}">
+            <div class="meta">
+              <span>ID: {{ item.id }}</span>
+              <span>System: {{ item.system_id or "n/a" }}</span>
+              <span>User: {{ item.user_id }}</span>
+              <span>Created: {{ item.timestamps.created_at }}</span>
+            </div>
+            <div class="block">
+              <strong>Query</strong>
+              <div class="response">{{ item.query }}</div>
+            </div>
+            <div class="block">
+              <strong>Generated Response</strong>
+              <div class="response">{{ item.response }}</div>
+            </div>
+            <div class="block">
+              <strong>Final Response</strong>
+              <textarea rows="6" class="final-response">{{ item.response }}</textarea>
+            </div>
+            <div class="block">
+              <strong>Reviewer Notes</strong>
+              <textarea rows="3" class="reviewer-notes" placeholder="Add review notes"></textarea>
+            </div>
+            <div class="actions">
+              <button type="button" onclick="approveReview('{{ item.id }}')">Approve</button>
+              <button type="button" class="danger" onclick="rejectReview('{{ item.id }}')">Reject</button>
+            </div>
+          </article>
+        {% endfor %}
+      {% else %}
+        <div class="empty">No pending reviews are currently displayed.</div>
+      {% endif %}
+    </section>
+  </div>
+
+  <script>
+    function getApiKey() {
+      return document.getElementById("api-key").value.trim();
+    }
+
+    function setStatus(message, isError = false) {
+      const node = document.getElementById("status");
+      node.textContent = message;
+      node.style.color = isError ? "#a33d2f" : "#1f6f50";
+    }
+
+    function cardFor(reviewId) {
+      return document.querySelector(`[data-review-id="${reviewId}"]`);
+    }
+
+    function renderReviews(items) {
+      const list = document.getElementById("review-list");
+      if (!items.length) {
+        list.innerHTML = '<div class="empty">No pending reviews are currently displayed.</div>';
+        return;
+      }
+
+      list.innerHTML = items.map((item) => `
+        <article class="card" data-review-id="${item.id}">
+          <div class="meta">
+            <span>ID: ${item.id}</span>
+            <span>System: ${item.system_id || "n/a"}</span>
+            <span>User: ${item.user_id}</span>
+            <span>Created: ${item.timestamps.created_at}</span>
+          </div>
+          <div class="block">
+            <strong>Query</strong>
+            <div class="response">${escapeHtml(item.query)}</div>
+          </div>
+          <div class="block">
+            <strong>Generated Response</strong>
+            <div class="response">${escapeHtml(item.response)}</div>
+          </div>
+          <div class="block">
+            <strong>Final Response</strong>
+            <textarea rows="6" class="final-response">${escapeHtml(item.response)}</textarea>
+          </div>
+          <div class="block">
+            <strong>Reviewer Notes</strong>
+            <textarea rows="3" class="reviewer-notes" placeholder="Add review notes"></textarea>
+          </div>
+          <div class="actions">
+            <button type="button" onclick="approveReview('${item.id}')">Approve</button>
+            <button type="button" class="danger" onclick="rejectReview('${item.id}')">Reject</button>
+          </div>
+        </article>
+      `).join("");
+    }
+
+    function escapeHtml(text) {
+      return String(text || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    async function loadPending() {
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        setStatus("Enter the review API key before loading pending items.", true);
+        return;
+      }
+
+      const response = await fetch("/review/pending", {
+        headers: { "x-api-key": apiKey }
+      });
+
+      if (!response.ok) {
+        setStatus("Unable to load pending reviews. Check the API key.", true);
+        return;
+      }
+
+      const data = await response.json();
+      renderReviews(data.items || []);
+      setStatus(`Loaded ${data.items.length} pending review item(s).`);
+    }
+
+    async function approveReview(reviewId) {
+      const apiKey = getApiKey();
+      const card = cardFor(reviewId);
+      const finalResponse = card.querySelector(".final-response").value;
+      const reviewerNotes = card.querySelector(".reviewer-notes").value;
+      const response = await fetch(`/review/${reviewId}/approve`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": apiKey,
+          "x-reviewer-id": "ui-reviewer"
+        },
+        body: JSON.stringify({
+          final_response: finalResponse,
+          reviewer_notes: reviewerNotes || null
+        })
+      });
+
+      if (!response.ok) {
+        setStatus(`Approval failed for ${reviewId}.`, true);
+        return;
+      }
+
+      setStatus(`Approved ${reviewId}.`);
+      await loadPending();
+    }
+
+    async function rejectReview(reviewId) {
+      const apiKey = getApiKey();
+      const card = cardFor(reviewId);
+      const reviewerNotes = card.querySelector(".reviewer-notes").value;
+      if (!reviewerNotes.trim()) {
+        setStatus("Reviewer notes are required for rejection.", true);
+        return;
+      }
+
+      const response = await fetch(`/review/${reviewId}/reject`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": apiKey,
+          "x-reviewer-id": "ui-reviewer"
+        },
+        body: JSON.stringify({ reviewer_notes: reviewerNotes })
+      });
+
+      if (!response.ok) {
+        setStatus(`Rejection failed for ${reviewId}.`, true);
+        return;
+      }
+
+      setStatus(`Rejected ${reviewId}.`);
+      await loadPending();
+    }
+  </script>
+</body>
+</html>
