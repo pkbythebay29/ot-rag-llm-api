@@ -12,7 +12,7 @@ with open("requirements.txt", encoding="utf-8") as f:
 
 setup(
     name="krionis-pipeline",
-    version="1.0.0",
+    version="1.0.1",
     author="pkbythebay29",
     author_email="kannan@haztechrisk.org",
     description="Krionis Pipeline - multimodal RAG pipeline for low-compute, local, real-world deployment",
@@ -21,6 +21,10 @@ setup(
     url="https://github.com/pkbythebay29/ot-rag-llm-api",
     packages=find_packages(),
     include_package_data=True,
+    package_data={
+        "rag_llm_api_pipeline": ["defaults/*.yaml", "defaults/*.txt", "web/*.html"],
+        "rag_llm_api_pipeline.ui": ["templates/*.html"],
+    },
     install_requires=install_requires,
     python_requires=">=3.10",
     entry_points={

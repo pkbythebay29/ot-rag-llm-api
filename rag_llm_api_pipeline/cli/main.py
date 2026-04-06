@@ -7,14 +7,13 @@ import time
 import yaml
 
 from rag_llm_api_pipeline.retriever import build_index, get_answer, list_indexed_data
-from rag_llm_api_pipeline.config_loader import load_config
-
-CONFIG_PATH = "config/system.yaml"
+from rag_llm_api_pipeline.config_loader import get_config_path, load_config
 
 
 def _save_precision_override(precision: str):
+    config_path = get_config_path()
     try:
-        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             cfg = yaml.safe_load(f) or {}
     except FileNotFoundError:
         cfg = {}
@@ -24,10 +23,10 @@ def _save_precision_override(precision: str):
     cfg["models"]["model_precision"] = precision
     cfg["llm"]["precision"] = precision  # legacy compatibility
 
-    os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
-    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+    os.makedirs(os.path.dirname(config_path), exist_ok=True)
+    with open(config_path, "w", encoding="utf-8") as f:
         yaml.safe_dump(cfg, f, sort_keys=False)
-    print(f"[INFO] Set precision -> {precision} in {CONFIG_PATH}")
+    print(f"[INFO] Set precision -> {precision} in {config_path}")
 
 
 def _ticker(start_ts: float, stop_flag: list[bool]):

@@ -3,22 +3,18 @@ import gc
 import time
 from typing import Any
 
-import yaml
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from transformers import StoppingCriteria, StoppingCriteriaList  # minimal patch import
+from rag_llm_api_pipeline.config_loader import get_config_path, load_config
 
 try:
     from torch.ao.quantization import quantize_dynamic
 except ImportError:  # pragma: no cover - compatibility fallback
     from torch.quantization import quantize_dynamic
 
-CONFIG_PATH = "config/system.yaml"
-
-
 def _load_cfg():
-    with open(CONFIG_PATH, "r") as f:
-        return yaml.safe_load(f)
+    return load_config()
 
 
 _cfg = _load_cfg()
@@ -264,7 +260,7 @@ class LLMWrapper:
     def __init__(self, config_path: str | None = None, **kwargs):
         # We already loaded the pipeline with module-level CONFIG_PATH.
         # If a different path is passed, we ignore it (or you can add reload logic later).
-        self.config_path = config_path or CONFIG_PATH
+        self.config_path = config_path or get_config_path()
         self.extra = kwargs
 
     def generate(self, question: str, context: str, **kwargs):

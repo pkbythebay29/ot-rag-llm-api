@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
+## [1.0.1] - 2026-04-06
+
+### Fixed
+- Packaged installs now bootstrap a writable Krionis runtime home with bundled default config and sample data
+- Clean `pip install` no longer depends on running from the repository root to find `system.yaml`
+- Orchestrator config resolution now falls back to the packaged pipeline config when no repo-local config is present
+- Added a regression test for packaged default bootstrap behavior
+
 ## [1.0.0] - 2026-04-06
 
 ### Added

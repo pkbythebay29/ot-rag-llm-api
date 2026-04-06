@@ -4,6 +4,11 @@ from typing import Any
 from pathlib import Path
 import yaml
 
+try:
+    from rag_llm_api_pipeline.config_loader import get_config_path
+except ImportError:  # pragma: no cover - orchestrator can be imported independently
+    get_config_path = None
+
 
 @dataclass
 class OrchestratorBatchCfg:
@@ -37,7 +42,12 @@ def resolve_system_yaml(
     fb = Path(fallback_yaml)
     if fb.exists():
         return str(fb)
-    return str(Path("config") / "system.yaml")
+    repo_default = Path("config") / "system.yaml"
+    if repo_default.exists():
+        return str(repo_default)
+    if get_config_path is not None:
+        return str(Path(get_config_path()))
+    return str(repo_default)
 
 
 def load_bridge_config(path: str) -> BridgeConfig:
