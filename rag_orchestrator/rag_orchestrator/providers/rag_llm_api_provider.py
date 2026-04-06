@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Tuple, Any
+from typing import Tuple
 
 
 class RagLLMApiProvider:

@@ -21,14 +21,20 @@ def get_index_dir(config: dict[str, Any] | None = None) -> str:
 
 def get_system_data_dir(system_name: str, config: dict[str, Any] | None = None) -> str:
     cfg = config or load_config() or {}
-    system = next((a for a in cfg.get("assets", []) if a.get("name") == system_name), None)
+    system = next(
+        (a for a in cfg.get("assets", []) if a.get("name") == system_name), None
+    )
     if not system:
         raise ValueError(f"System '{system_name}' not found in assets list.")
-    return system.get("docs_dir") or cfg.get("settings", {}).get("data_dir", "data/manuals")
+    return system.get("docs_dir") or cfg.get("settings", {}).get(
+        "data_dir", "data/manuals"
+    )
 
 
 def _list_source_files(system_name: str, config: dict[str, Any]) -> list[str]:
-    system = next((a for a in config.get("assets", []) if a.get("name") == system_name), None)
+    system = next(
+        (a for a in config.get("assets", []) if a.get("name") == system_name), None
+    )
     if not system:
         raise ValueError(f"System '{system_name}' not found in assets list.")
 
@@ -39,7 +45,9 @@ def _list_source_files(system_name: str, config: dict[str, Any]) -> list[str]:
     if not os.path.isdir(data_dir):
         return []
     return sorted(
-        name for name in os.listdir(data_dir) if os.path.isfile(os.path.join(data_dir, name))
+        name
+        for name in os.listdir(data_dir)
+        if os.path.isfile(os.path.join(data_dir, name))
     )
 
 
@@ -54,7 +62,9 @@ def _chunk_count(texts_path: str) -> int | None:
         return None
 
 
-def get_index_status(system_name: str, config: dict[str, Any] | None = None) -> dict[str, Any]:
+def get_index_status(
+    system_name: str, config: dict[str, Any] | None = None
+) -> dict[str, Any]:
     cfg = config or load_config() or {}
     index_dir = get_index_dir(cfg)
     data_dir = get_system_data_dir(system_name, cfg)
@@ -65,7 +75,8 @@ def get_index_status(system_name: str, config: dict[str, Any] | None = None) -> 
     meta_path = os.path.join(index_dir, f"{system_name}_meta.pkl")
     normflag_path = os.path.join(index_dir, f"{system_name}.normflag")
     index_exists = all(
-        os.path.exists(path) for path in (faiss_path, texts_path, meta_path, normflag_path)
+        os.path.exists(path)
+        for path in (faiss_path, texts_path, meta_path, normflag_path)
     )
     last_built_ts = os.path.getmtime(faiss_path) if os.path.exists(faiss_path) else None
 

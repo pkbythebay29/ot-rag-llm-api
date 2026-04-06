@@ -47,7 +47,9 @@ def get_audit_events(limit: int = 100) -> list[dict[str, Any]]:
 
 def get_trace_events(trace_id: str) -> list[dict[str, Any]]:
     return [
-        event for event in get_audit_events(limit=5000) if event.get("trace_id") == trace_id
+        event
+        for event in get_audit_events(limit=5000)
+        if event.get("trace_id") == trace_id
     ]
 
 

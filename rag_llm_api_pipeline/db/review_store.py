@@ -90,7 +90,9 @@ def update_review(review_id: str, item: dict[str, Any]) -> dict[str, Any]:
     item.setdefault("timestamps", {})
     item["timestamps"]["updated_at"] = utc_now_iso()
     payload = json.dumps(item, ensure_ascii=True, sort_keys=True)
-    created_at = item["timestamps"].get("created_at") or item["timestamps"]["updated_at"]
+    created_at = (
+        item["timestamps"].get("created_at") or item["timestamps"]["updated_at"]
+    )
     updated_at = item["timestamps"]["updated_at"]
     with _connect() as conn:
         conn.execute(

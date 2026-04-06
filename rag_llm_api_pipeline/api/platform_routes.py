@@ -243,7 +243,9 @@ class QualityFeedbackRequest(BaseModel):
 
 class AgentStartRequest(BaseModel):
     system: str = Field(..., description="System to bind the agent to.")
-    agent_type: str = Field(default="retriever", description="Built-in agent slug to start.")
+    agent_type: str = Field(
+        default="retriever", description="Built-in agent slug to start."
+    )
     name_prefix: str = Field(
         default="agent",
         description="Prefix used when creating the agent instance name.",
@@ -359,7 +361,9 @@ def get_index_status_route(system_name: str) -> dict[str, Any]:
     try:
         return get_index_status(system_name, load_config() or {})
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
 
 
 @router.post(
@@ -372,9 +376,13 @@ def rebuild_index_route(system_name: str) -> IndexRebuildResponse:
     try:
         report = rebuild_index_in_worker(system_name)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     except RuntimeError as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc
     return IndexRebuildResponse(
         system_name=system_name,
         status="rebuilt",
@@ -408,7 +416,9 @@ async def start_agent_route(payload: AgentStartRequest) -> dict[str, Any]:
         from rag_orchestrator.agents.base import AgentSpec
         from rag_orchestrator.agents.registry import list_registered
     except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc
 
     registered = list_registered()
     if payload.agent_type not in registered:

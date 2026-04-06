@@ -54,8 +54,12 @@ def _wire_orchestrator(app: FastAPI) -> None:
     try:
         _ensure_orchestrator_import_path()
         from rag_orchestrator.api.imports import load_builtin_agents
-        from rag_orchestrator.api.routes_agents import router as orchestrator_agents_router
-        from rag_orchestrator.api.routes_catalog import router as orchestrator_catalog_router
+        from rag_orchestrator.api.routes_agents import (
+            router as orchestrator_agents_router,
+        )
+        from rag_orchestrator.api.routes_catalog import (
+            router as orchestrator_catalog_router,
+        )
         from rag_orchestrator.api.routes_telemetry import (
             router as orchestrator_telemetry_router,
         )
@@ -77,6 +81,7 @@ def _wire_orchestrator(app: FastAPI) -> None:
 
     except Exception:
         logger.exception("Failed to wire orchestrator routes into the main API.")
+
 
 OPENAPI_TAGS = [
     {

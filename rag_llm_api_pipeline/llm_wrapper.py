@@ -1,6 +1,8 @@
 import os
 import gc
 import time
+from typing import Any
+
 import yaml
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
@@ -58,8 +60,8 @@ def _select_quantization_backend(device: str) -> str:
     return backend
 
 
-def _build_model_load_kwargs(device: str, dtype, quant_backend: str) -> dict:
-    kwargs = {
+def _build_model_load_kwargs(device: str, dtype, quant_backend: str) -> dict[str, Any]:
+    kwargs: dict[str, Any] = {
         "trust_remote_code": True,
         "low_cpu_mem_usage": bool(_models.get("low_cpu_mem_usage", True)),
     }

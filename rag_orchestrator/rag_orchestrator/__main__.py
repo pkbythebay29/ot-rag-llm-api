@@ -1,5 +1,8 @@
 from __future__ import annotations
-import os, uvicorn
+
+import os
+
+import uvicorn
 
 
 def main():

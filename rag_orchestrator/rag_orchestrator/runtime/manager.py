@@ -1,7 +1,10 @@
 from __future__ import annotations
-import asyncio, uuid
+
+import asyncio
+import uuid
 from dataclasses import dataclass
 from typing import Any, Dict
+
 from rag_orchestrator.agents.base import AgentSpec, Agent
 from rag_orchestrator.agents import registry as agent_registry
 

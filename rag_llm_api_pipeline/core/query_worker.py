@@ -60,7 +60,9 @@ def get_query_worker_status() -> dict[str, Any]:
         return dict(_worker_status)
 
 
-def run_query_in_worker(system_name: str, question: str, *, timeout_sec: float = 900.0) -> dict[str, Any]:
+def run_query_in_worker(
+    system_name: str, question: str, *, timeout_sec: float = 900.0
+) -> dict[str, Any]:
     _set_status(
         state="running",
         last_error=None,

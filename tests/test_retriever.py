@@ -15,7 +15,9 @@ def test_normal_query_is_auto_approved(app_client):
     assert "answer" in body
     assert body["sources"] == ["Chunk 1"]
 
-    audit_lines = app_client["audit_log"].read_text(encoding="utf-8").strip().splitlines()
+    audit_lines = (
+        app_client["audit_log"].read_text(encoding="utf-8").strip().splitlines()
+    )
     audit_record = json.loads(audit_lines[-1])
     assert audit_record["status"] == "approved"
     assert audit_record["reviewer_decision"] == "auto_approved"

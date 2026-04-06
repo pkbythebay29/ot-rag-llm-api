@@ -8,7 +8,9 @@ from fastapi.templating import Jinja2Templates
 from rag_llm_api_pipeline.core.security import get_configured_api_key
 from rag_llm_api_pipeline.db import review_store
 
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
+templates = Jinja2Templates(
+    directory=str(Path(__file__).resolve().parent / "templates")
+)
 router = APIRouter(prefix="/ui", tags=["UI"])
 root_router = APIRouter(tags=["UI"])
 

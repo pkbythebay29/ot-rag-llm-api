@@ -46,7 +46,9 @@ def test_approve_review_stores_final_response(app_client):
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "approved"
-    assert body["response"] == "Dosage guidance requires human validation before release."
+    assert (
+        body["response"] == "Dosage guidance requires human validation before release."
+    )
     assert body["final_response"] == "Approved and verified dosage response."
     assert body["reviewer_notes"] == "Cross-checked against SOP-17."
 
@@ -96,9 +98,7 @@ def test_pending_review_endpoint_requires_api_key(app_client):
     unauthorized = client.get("/review/pending")
     assert unauthorized.status_code == 401
 
-    authorized = client.get(
-        "/review/pending", headers={"x-api-key": "test-review-key"}
-    )
+    authorized = client.get("/review/pending", headers={"x-api-key": "test-review-key"})
     assert authorized.status_code == 200
     assert len(authorized.json()["items"]) == 1
 

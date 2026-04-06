@@ -1,7 +1,11 @@
 from fastapi import APIRouter
+from fastapi.responses import JSONResponse
+
+from ..agents.base import AgentSpec
 from .routes_agents import router as agents_router
 from .routes_catalog import router as catalog_router
 from .routes_query import router as query_router
+from ._state import manager
 
 # optional telemetry (safe if pool absent)
 try:
@@ -58,11 +62,6 @@ async def batching_stats():
 
 
 router.include_router(telemetry_router)
-
-# --- diagnostics (add at bottom of routes.py) ---
-from fastapi.responses import JSONResponse
-from ._state import manager
-from ..agents.base import AgentSpec
 
 
 @router.post("/diag/smoke-start", tags=["diagnostics"])

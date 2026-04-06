@@ -23,8 +23,9 @@ def get_feedback_log_path() -> str:
 def record_review_feedback(item: dict[str, Any]) -> dict[str, Any]:
     path = get_feedback_log_path()
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    recorded_at = utc_now_iso()
     payload = {
-        "recorded_at": utc_now_iso(),
+        "recorded_at": recorded_at,
         "review_id": item.get("id"),
         "trace_id": item.get("trace_id"),
         "system_id": item.get("system_id"),
@@ -42,7 +43,7 @@ def record_review_feedback(item: dict[str, Any]) -> dict[str, Any]:
         handle.flush()
     metadata_store.save_record(
         event_type="review_feedback",
-        created_at=payload["recorded_at"],
+        created_at=recorded_at,
         payload=payload,
         trace_id=payload.get("trace_id"),
         review_id=payload.get("review_id"),
@@ -74,8 +75,9 @@ def record_quality_feedback(
 ) -> dict[str, Any]:
     path = get_quality_log_path()
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    recorded_at = utc_now_iso()
     payload = {
-        "recorded_at": utc_now_iso(),
+        "recorded_at": recorded_at,
         "trace_id": trace_id,
         "review_id": review_id,
         "rating": rating,
@@ -89,7 +91,7 @@ def record_quality_feedback(
         handle.flush()
     metadata_store.save_record(
         event_type="quality_feedback",
-        created_at=payload["recorded_at"],
+        created_at=recorded_at,
         payload=payload,
         trace_id=payload.get("trace_id"),
         review_id=payload.get("review_id"),

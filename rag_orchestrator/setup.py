@@ -29,11 +29,11 @@ setup(
         "Source": "https://github.com/pkbythebay29/ot-rag-llm-api",
     },
     entry_points={
-    "console_scripts": [
-        # New CLI
-        "krionis-orchestrator = rag_orchestrator.cli.main:main",
-        # Optional: keep the python -m path as a thin wrapper if you want
-        # "rag-orchestrator = rag_orchestrator.cli.main:main",
+        "console_scripts": [
+            # New CLI
+            "krionis-orchestrator = rag_orchestrator.cli.main:main",
+            # Optional: keep the python -m path as a thin wrapper if you want
+            # "rag-orchestrator = rag_orchestrator.cli.main:main",
         ],
-    }, 
+    },
 )

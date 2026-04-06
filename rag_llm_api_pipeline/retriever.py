@@ -103,12 +103,14 @@ def build_index(system_name: str) -> Dict[str, Any]:
     index = faiss.IndexFlatL2(embeddings.shape[1])
     index.add(embeddings)
     faiss.write_index(index, os.path.join(INDEX_DIR, f"{system_name}.faiss"))
-    with open(os.path.join(INDEX_DIR, f"{system_name}_texts.pkl"), "wb") as f:
-        pickle.dump(texts, f)
-    with open(os.path.join(INDEX_DIR, f"{system_name}_meta.pkl"), "wb") as f:
-        pickle.dump(metas, f)
-    with open(os.path.join(INDEX_DIR, f"{system_name}.normflag"), "w") as f:
-        f.write("1" if _NORMALIZE else "0")
+    with open(os.path.join(INDEX_DIR, f"{system_name}_texts.pkl"), "wb") as handle:
+        pickle.dump(texts, handle)
+    with open(os.path.join(INDEX_DIR, f"{system_name}_meta.pkl"), "wb") as handle:
+        pickle.dump(metas, handle)
+    with open(
+        os.path.join(INDEX_DIR, f"{system_name}.normflag"), "w", encoding="utf-8"
+    ) as handle:
+        handle.write("1" if _NORMALIZE else "0")
     t_w1 = _now()
 
     report = {
@@ -148,7 +150,8 @@ def _retrieve_chunks(system_name: str, question: str):
 
     # Validate normalization consistency
     if os.path.exists(normflag_path):
-        stored_flag = open(normflag_path).read().strip()
+        with open(normflag_path, encoding="utf-8") as handle:
+            stored_flag = handle.read().strip()
         if stored_flag != ("1" if _NORMALIZE else "0"):
             print(
                 "[WARN] Normalization setting has changed since index build. Rebuild the index."

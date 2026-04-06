@@ -7,9 +7,7 @@ from typing import Any
 
 from rag_llm_api_pipeline.config_loader import load_config
 
-DEFAULT_METADATA_DB_PATH = os.path.join(
-    "data", "feedback", "result_metadata.sqlite3"
-)
+DEFAULT_METADATA_DB_PATH = os.path.join("data", "feedback", "result_metadata.sqlite3")
 
 
 def get_db_path() -> str:

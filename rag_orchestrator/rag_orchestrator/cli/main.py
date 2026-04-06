@@ -25,6 +25,7 @@ UVICORN_APP = "rag_orchestrator.api.app:app"
 # helpers
 # ---------------------------
 
+
 def _spawn_detached(cmd: list[str], log_path: Optional[str]) -> subprocess.Popen:
     """
     Spawn uvicorn detached from the current console, cross-platform.
@@ -39,8 +40,8 @@ def _spawn_detached(cmd: list[str], log_path: Optional[str]) -> subprocess.Popen
         stdout = stderr = logf  # let Popen keep the handle
 
     if sys.platform == "win32":
-        DETACHED = 0x00000008         # DETACHED_PROCESS
-        NEW_GROUP = 0x00000200        # CREATE_NEW_PROCESS_GROUP
+        DETACHED = 0x00000008  # DETACHED_PROCESS
+        NEW_GROUP = 0x00000200  # CREATE_NEW_PROCESS_GROUP
         return subprocess.Popen(
             cmd,
             stdin=subprocess.DEVNULL,
@@ -70,14 +71,13 @@ def _find_server_proc(port: int) -> Optional[psutil.Process]:
     for p in psutil.process_iter(["pid", "name", "cmdline", "create_time"]):
         try:
             for c in p.connections(kind="inet"):
-                if (
-                    c.status == psutil.CONN_LISTEN
-                    and c.laddr
-                    and c.laddr.port == port
-                ):
+                if c.status == psutil.CONN_LISTEN and c.laddr and c.laddr.port == port:
                     # sanity: looks like uvicorn running our app
                     cmd = " ".join(p.info.get("cmdline") or [])
-                    if "uvicorn" in (p.info.get("name") or "").lower() or "uvicorn" in cmd.lower():
+                    if (
+                        "uvicorn" in (p.info.get("name") or "").lower()
+                        or "uvicorn" in cmd.lower()
+                    ):
                         cand.append(p)
                         break
         except (psutil.AccessDenied, psutil.NoSuchProcess):
@@ -107,7 +107,9 @@ def _terminate_proc(p: psutil.Process, timeout: float = 10.0) -> bool:
     try:
         if sys.platform == "win32":
             # terminate whole tree
-            subprocess.run(["taskkill", "/PID", str(p.pid), "/T", "/F"], capture_output=True)
+            subprocess.run(
+                ["taskkill", "/PID", str(p.pid), "/T", "/F"], capture_output=True
+            )
             return True
         else:
             # send SIGTERM to the process group
@@ -134,11 +136,14 @@ def _terminate_proc(p: psutil.Process, timeout: float = 10.0) -> bool:
 # Commands
 # ---------------------------
 
+
 @app.command()
 def start(
     host: str = typer.Option(DEFAULT_HOST, help="Host to bind"),
     port: int = typer.Option(DEFAULT_PORT, help="Port to bind"),
-    log_file: str = typer.Option(DEFAULT_LOG, help="Optional log file (stdout/stderr)."),
+    log_file: str = typer.Option(
+        DEFAULT_LOG, help="Optional log file (stdout/stderr)."
+    ),
     workers: int = typer.Option(1, help="Number of uvicorn workers"),
 ):
     """
@@ -153,12 +158,18 @@ def start(
         raise typer.Exit(0)
 
     cmd = [
-        sys.executable, "-m", "uvicorn",
+        sys.executable,
+        "-m",
+        "uvicorn",
         UVICORN_APP,
-        "--host", host,
-        "--port", str(port),
-        "--workers", str(workers),
-        "--log-level", "info",
+        "--host",
+        host,
+        "--port",
+        str(port),
+        "--workers",
+        str(workers),
+        "--log-level",
+        "info",
     ]
 
     proc = _spawn_detached(cmd, log_file or None)
@@ -183,7 +194,9 @@ def start(
     up = _fmt_uptime(target.create_time())
     where = f"http://{host}:{port}"
     if log_file:
-        typer.echo(f"Started orchestrator (pid {target.pid}, uptime {up}). Logs -> {Path(log_file).resolve()}")
+        typer.echo(
+            f"Started orchestrator (pid {target.pid}, uptime {up}). Logs -> {Path(log_file).resolve()}"
+        )
     else:
         typer.echo(f"Started orchestrator (pid {target.pid}, uptime {up}).")
     typer.echo(f"Uvicorn listening on {where}")
@@ -248,12 +261,20 @@ def dev(
     """
     Run in foreground with auto-reload (developer mode).
     """
-    os.execv(sys.executable, [
-        sys.executable, "-m", "uvicorn",
-        UVICORN_APP,
-        "--host", host, "--port", str(port),
-        "--reload",
-    ])
+    os.execv(
+        sys.executable,
+        [
+            sys.executable,
+            "-m",
+            "uvicorn",
+            UVICORN_APP,
+            "--host",
+            host,
+            "--port",
+            str(port),
+            "--reload",
+        ],
+    )
 
 
 def main() -> None:
