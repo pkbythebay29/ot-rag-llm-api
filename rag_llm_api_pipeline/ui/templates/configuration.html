@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Krionis Configuration</title>
+  <style>
+    :root { --bg:#f5f5f7; --panel:rgba(255,255,255,.9); --ink:#111; --muted:#6e6e73; --line:rgba(17,17,17,.1); --fill:#111; --fill-soft:rgba(17,17,17,.06); --shadow:0 24px 60px rgba(15,15,15,.08); --radius-xl:28px; }
+    * { box-sizing:border-box; } body { margin:0; min-height:100vh; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue",Arial,sans-serif; background:linear-gradient(180deg,#fbfbfc 0%,var(--bg) 100%); color:var(--ink); }
+    .shell { max-width:1320px; margin:0 auto; padding:28px 20px 40px; } .panel { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius-xl); box-shadow:var(--shadow); padding:24px; } .hero { margin-bottom:18px; } .nav, .grid { display:grid; gap:16px; } .nav { grid-template-columns:repeat(auto-fit,minmax(120px,max-content)); margin-bottom:18px; } .grid { grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); } .linkbtn,.out,.item { border-radius:20px; border:1px solid var(--line); background:rgba(255,255,255,.88); padding:14px 16px; } .linkbtn { text-decoration:none; color:var(--ink); background:var(--fill-soft); font-weight:600; display:inline-flex; justify-content:center; } .linkbtn.active { background:var(--fill); color:#fff; } p { color:var(--muted); line-height:1.6; } .tiny { color:var(--muted); font-size:.86rem; line-height:1.55; } .mono { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="panel hero">
+      <h1>Configuration</h1>
+      <p>Resolved model runtime, HITL thresholds, local storage paths, and refresh settings loaded from YAML.</p>
+    </section>
+    <nav class="nav">
+      <a class="linkbtn" href="/">Operator</a>
+      <a class="linkbtn" href="/ui/telemetry">Telemetry</a>
+      <a class="linkbtn" href="/ui/runtime">Runtime</a>
+      <a class="linkbtn active" href="/ui/configuration">Configuration</a>
+      <a class="linkbtn" href="/ui/records">Records</a>
+      <a class="linkbtn" href="/ui/reviews">Reviews</a>
+    </nav>
+    <section class="grid">
+      <div class="panel"><h2>Runtime Config</h2><div id="models-box" class="out tiny"></div></div>
+      <div class="panel"><h2>Paths</h2><div id="paths-box" class="out tiny mono"></div></div>
+      <div class="panel"><h2>HITL</h2><div id="hitl-box" class="out tiny"></div></div>
+      <div class="panel"><h2>Refresh</h2><div id="refresh-box" class="out tiny"></div></div>
+    </section>
+  </main>
+  <script>
+    const modelsBox = document.getElementById("models-box");
+    const pathsBox = document.getElementById("paths-box");
+    const hitlBox = document.getElementById("hitl-box");
+    const refreshBox = document.getElementById("refresh-box");
+    async function loadConfiguration() {
+      try {
+        const res = await fetch("/platform/configuration");
+        const json = await res.json();
+        const models = json.models || {};
+        modelsBox.innerHTML = `<strong>LLM</strong><br>${models.llm_model || "Not set"}<br><br><strong>Embeddings</strong><br>${models.embedding_model || "Not set"}<br><br><strong>Device</strong><br>${models.device || "?"} -> ${models.effective_device || "?"}<br><br><strong>Quantization</strong><br>${models.quantization_backend || "?"} -> ${models.effective_quantization_backend || "?"}<br><br><strong>Prompt</strong><br>${models.prompt_version || "?"}`;
+        const paths = json.paths || {};
+        pathsBox.textContent = Object.entries(paths).map(([key, value]) => `${key} = ${value}`).join("\n");
+        const hitl = json.hitl || {};
+        hitlBox.innerHTML = `<strong>Keywords</strong><br>${(hitl.review_keywords || []).join(", ") || "none"}<br><br><strong>Length threshold</strong><br>${hitl.response_length_threshold ?? "?"}<br><br><strong>Preview chars</strong><br>${hitl.response_preview_chars ?? "?"}`;
+        refreshBox.innerHTML = `<strong>Telemetry refresh</strong><br>every ${json.refresh?.telemetry_refresh_seconds || 5} seconds`;
+      } catch (error) { modelsBox.textContent = error.message; }
+    }
+    loadConfiguration();
+  </script>
+</body>
+</html>

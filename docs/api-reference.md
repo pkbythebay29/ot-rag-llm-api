@@ -55,6 +55,21 @@ Pending review response example:
 }
 ```
 
+### `POST /orchestrator/query`
+
+Submit a controlled query through a selected agent task.
+
+Request body:
+
+```json
+{
+  "task_id": "agent1-retriever-0",
+  "system": "TestSystem",
+  "question": "What is the restart sequence?",
+  "context": ""
+}
+```
+
 ## Review queue
 
 ### `GET /review/pending`
@@ -95,6 +110,65 @@ Request body:
 ### `GET /system/metadata`
 
 Return Krionis system metadata, platform versioning, and module classification.
+
+### `GET /platform/configuration`
+
+Return the active YAML-backed configuration snapshot, resolved runtime choices, and local storage paths.
+
+### `GET /platform/dashboard`
+
+Return the operator dashboard snapshot, including active agents, retrieval index status, recent routes, and runtime summaries.
+
+### `GET /platform/telemetry`
+
+Return live telemetry, recent route events, and the configured refresh interval.
+
+### `GET /platform/runtime`
+
+Return process-level runtime diagnostics, worker state, and recent log lines.
+
+### `GET /platform/indexes`
+
+Return source directories, source files, index directories, and cache state for all configured systems.
+
+### `GET /platform/indexes/{system_name}`
+
+Return source and cache state for one configured system.
+
+### `POST /platform/indexes/{system_name}/rebuild`
+
+Rebuild the retrieval cache for a system in an isolated worker.
+
+### `GET /platform/agents`
+
+List active agents and current capacity.
+
+### `POST /platform/agents/start`
+
+Start one built-in agent and return its task identifier.
+
+Request body:
+
+```json
+{
+  "system": "TestSystem",
+  "agent_type": "retriever",
+  "name_prefix": "agent",
+  "tenant": "default"
+}
+```
+
+### `DELETE /platform/agents/{agent_ref}`
+
+Stop an active agent by task name or handle ID.
+
+### `GET /platform/routes/recent`
+
+Return recent controlled-query routing events, including the agent used for each query.
+
+### `GET /platform/records`
+
+Return recent persisted result metadata, including `Good` or `Bad` ratings and review decisions.
 
 ### `GET /audit/traces/{trace_id}`
 

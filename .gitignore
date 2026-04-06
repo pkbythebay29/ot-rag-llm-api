@@ -40,8 +40,13 @@ datasets/
 
 # FAISS and embeddings
 data/indexes/
+data/reviews/
+data/feedback/
+data/audit/
+indices/
 *.faiss
 *.pkl
+*.normflag
 
 # User-generated docs/audio
 data/manuals/*
@@ -61,6 +66,7 @@ coverage.xml
 .tmp/
 site/
 external/
+rag_llm_api_pipeline/ui/templates/platform.html
 
 # PyInstaller
 *.spec

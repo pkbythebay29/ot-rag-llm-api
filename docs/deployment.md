@@ -30,6 +30,42 @@ Serve locally:
 mkdocs serve
 ```
 
+## Container deployment
+
+An integrated container path is included for the API plus orchestrator runtime.
+
+Build and start:
+
+```bash
+docker compose up --build
+```
+
+The compose file persists:
+
+- `./config`
+- `./data`
+- `./indices`
+
+This keeps:
+
+- source manuals
+- retrieval indexes
+- review queue records
+- audit logs
+- result metadata
+
+outside the image for easier backup and validation.
+
+## Runtime storage
+
+The platform now persists operational records locally:
+
+- review queue: SQLite
+- result metadata for ratings and review outcomes: SQLite
+- audit trail: append-only JSONL
+
+That split keeps the mutable workflow state queryable while preserving the append-only audit log separately.
+
 ## Production considerations
 
 - Keep the docs site static and separately deployable from the API.

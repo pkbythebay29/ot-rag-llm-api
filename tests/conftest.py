@@ -39,6 +39,15 @@ def app_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         "KRIONIS_FEEDBACK_LOG_PATH",
         str(tmp_path / "feedback" / "corrections.jsonl"),
     )
+    monkeypatch.setenv(
+        "KRIONIS_QUALITY_LOG_PATH",
+        str(tmp_path / "feedback" / "quality_ratings.jsonl"),
+    )
+    monkeypatch.setenv(
+        "KRIONIS_RESULTS_DB_PATH",
+        str(tmp_path / "feedback" / "result_metadata.sqlite3"),
+    )
+    monkeypatch.setenv("KRIONIS_DISABLE_QUERY_WORKER", "1")
 
     import rag_llm_api_pipeline.api.server as server
 

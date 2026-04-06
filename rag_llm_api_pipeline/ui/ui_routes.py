@@ -10,6 +10,52 @@ from rag_llm_api_pipeline.db import review_store
 
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 router = APIRouter(prefix="/ui", tags=["UI"])
+root_router = APIRouter(tags=["UI"])
+
+
+@root_router.get("/")
+def platform_dashboard(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="platform_v2.html",
+        context={},
+    )
+
+
+@router.get("/telemetry")
+def telemetry_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="telemetry.html",
+        context={},
+    )
+
+
+@router.get("/runtime")
+def runtime_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="runtime.html",
+        context={},
+    )
+
+
+@router.get("/configuration")
+def configuration_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="configuration.html",
+        context={},
+    )
+
+
+@router.get("/records")
+def records_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="records.html",
+        context={},
+    )
 
 
 @router.get("/reviews")

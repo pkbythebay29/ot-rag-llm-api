@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 from importlib.resources import as_file, files
 from typing import Any
 from uuid import uuid4
@@ -22,10 +23,12 @@ from rag_llm_api_pipeline.core.hitl import (
     requires_human_review,
     utc_now_iso,
 )
+from rag_llm_api_pipeline.core.platform_state import record_query_route
 from rag_llm_api_pipeline.core.orchestrator import get_orchestrator
+from rag_llm_api_pipeline.core.query_worker import run_query_in_worker
 from rag_llm_api_pipeline.core.security import get_user_id
-from rag_llm_api_pipeline.db import review_store
-from rag_llm_api_pipeline.ui.ui_routes import router as ui_router
+from rag_llm_api_pipeline.db import metadata_store, review_store
+from rag_llm_api_pipeline.ui.ui_routes import root_router, router as ui_router
 
 """
 FastAPI server for RAG LLM API Pipeline
@@ -38,6 +41,42 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+def _ensure_orchestrator_import_path() -> None:
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    orchestrator_root = os.path.join(repo_root, "rag_orchestrator")
+    if os.path.isdir(orchestrator_root) and orchestrator_root not in sys.path:
+        sys.path.insert(0, orchestrator_root)
+
+
+def _wire_orchestrator(app: FastAPI) -> None:
+    try:
+        _ensure_orchestrator_import_path()
+        from rag_orchestrator.api.imports import load_builtin_agents
+        from rag_orchestrator.api.routes_agents import router as orchestrator_agents_router
+        from rag_orchestrator.api.routes_catalog import router as orchestrator_catalog_router
+        from rag_orchestrator.api.routes_telemetry import (
+            router as orchestrator_telemetry_router,
+        )
+        from rag_orchestrator.agents.registry import list_registered
+        from rag_orchestrator.api._state import schedule_startup
+
+        load_builtin_agents()
+        app.include_router(orchestrator_agents_router, prefix="/orchestrator")
+        app.include_router(orchestrator_catalog_router, prefix="/orchestrator")
+        app.include_router(orchestrator_telemetry_router, prefix="/orchestrator")
+
+        @app.get("/orchestrator/diag/agents", tags=["diagnostics"])
+        def orchestrator_diag_agents() -> dict[str, list[str]]:
+            return {"registered": list_registered()}
+
+        @app.on_event("startup")
+        async def _start_orchestrator_runtime() -> None:
+            schedule_startup()
+
+    except Exception:
+        logger.exception("Failed to wire orchestrator routes into the main API.")
 
 OPENAPI_TAGS = [
     {
@@ -57,6 +96,30 @@ OPENAPI_TAGS = [
         "description": "System metadata and append-only audit retrieval endpoints for platform integrations.",
     },
     {
+        "name": "Configuration",
+        "description": "Resolved YAML configuration, local paths, and runtime settings surfaced for external consoles.",
+    },
+    {
+        "name": "Records",
+        "description": "Stored quality ratings and review-decision metadata for local analytics and QA workflows.",
+    },
+    {
+        "name": "agents",
+        "description": "Agent lifecycle endpoints for starting and inspecting orchestrator workers.",
+    },
+    {
+        "name": "telemetry",
+        "description": "Live orchestrator and microbatch telemetry endpoints.",
+    },
+    {
+        "name": "catalog",
+        "description": "Available built-in orchestrator agent types.",
+    },
+    {
+        "name": "diagnostics",
+        "description": "Diagnostics for built-in agent registration and provider connectivity.",
+    },
+    {
         "name": "UI",
         "description": "Internal browser-based interfaces used by operators and reviewers.",
     },
@@ -73,6 +136,28 @@ class QueryRequest(BaseModel):
         ...,
         description="Natural-language question to send through the Krionis query pipeline.",
         examples=["What is the restart sequence for this machine?"],
+    )
+
+
+class ControlledAgentQueryRequest(BaseModel):
+    task_id: str = Field(
+        ...,
+        description="Started agent task identifier or agent name.",
+        examples=["session1-retriever-0"],
+    )
+    system: str = Field(
+        ...,
+        description="Logical system identifier configured in config/system.yaml.",
+        examples=["TestSystem"],
+    )
+    question: str = Field(
+        ...,
+        description="Natural-language question to route through the orchestrator.",
+        examples=["What is the restart sequence for this machine?"],
+    )
+    context: str | None = Field(
+        default="",
+        description="Optional additional context provided with the query.",
     )
 
 
@@ -114,6 +199,157 @@ def _format_stats(stats: dict[str, Any], cfg: dict[str, Any]) -> dict[str, Any]:
     return formatted
 
 
+def _normalize_result(result: Any) -> dict[str, Any]:
+    if hasattr(result, "model_dump"):
+        return dict(result.model_dump())
+    if isinstance(result, dict):
+        return dict(result)
+    return {"answer": str(result or "")}
+
+
+def _execute_query(system_id: str, question: str) -> dict[str, Any]:
+    if os.getenv("KRIONIS_DISABLE_QUERY_WORKER", "").strip() == "1":
+        return _normalize_result(
+            get_orchestrator().run_query(system_name=system_id, question=question)
+        )
+    return _normalize_result(run_query_in_worker(system_id, question))
+
+
+def _controlled_response(
+    *,
+    system_id: str,
+    question: str,
+    result: Any,
+    user_id: str,
+    trace_id: str,
+    route_name: str,
+    agent_task_id: str | None = None,
+) -> dict[str, Any]:
+    cfg = load_config()
+    model_version, prompt_version = get_version_placeholders()
+    normalized = _normalize_result(result)
+    answer = str(
+        normalized.get("answer")
+        or normalized.get("text")
+        or normalized.get("response")
+        or ""
+    )
+    sources = list(normalized.get("sources") or [])
+    stats = dict(normalized.get("stats") or {})
+    retrieved_documents = list(normalized.get("retrieved_documents") or [])
+    formatted_stats = _format_stats(stats, cfg)
+    trace = _build_trace(trace_id, "evaluated", formatted_stats)
+    trace["steps"].insert(
+        1,
+        {
+            "stage": f"{route_name}_executed",
+            "timestamp": utc_now_iso(),
+            "agent_task_id": agent_task_id,
+        },
+    )
+
+    if requires_human_review(question, answer):
+        review_item = create_review_item(
+            question,
+            answer,
+            system_id=system_id,
+            user_id=user_id,
+            trace_id=trace_id,
+            retrieved_documents=retrieved_documents,
+            response_preview=answer[: get_response_preview_chars()],
+        )
+        if agent_task_id:
+            review_item["agent_task_id"] = agent_task_id
+        review_store.save_review(review_item)
+        trace["steps"].append({"stage": "review_queued", "timestamp": utc_now_iso()})
+        audit.log_query_event(
+            trace_id=trace_id,
+            system_id=system_id,
+            query=question,
+            generated_response=answer,
+            final_response=None,
+            retrieved_documents=retrieved_documents,
+            user_id=user_id,
+            model_version=model_version,
+            prompt_version=prompt_version,
+            status="pending_review",
+            reviewer_decision="pending_review",
+            review_id=review_item["id"],
+            execution_trace=trace,
+            sources=sources,
+        )
+        response: dict[str, Any] = {
+            "status": "pending_review",
+            "trace_id": trace_id,
+            "review_id": review_item["id"],
+            "system": system_id,
+            "question": question,
+            "response_preview": review_item["response_preview"],
+        }
+        if agent_task_id:
+            response["agent_task_id"] = agent_task_id
+        if formatted_stats:
+            response["stats"] = formatted_stats
+        record_query_route(
+            {
+                "timestamp": utc_now_iso(),
+                "trace_id": trace_id,
+                "route_name": route_name,
+                "status": "pending_review",
+                "system": system_id,
+                "question": question,
+                "question_preview": question[:120],
+                "agent_task_id": agent_task_id,
+                "review_id": review_item["id"],
+            }
+        )
+        return response
+
+    trace["steps"].append({"stage": "auto_approved", "timestamp": utc_now_iso()})
+    audit.log_query_event(
+        trace_id=trace_id,
+        system_id=system_id,
+        query=question,
+        generated_response=answer,
+        final_response=answer,
+        retrieved_documents=retrieved_documents,
+        user_id=user_id,
+        model_version=model_version,
+        prompt_version=prompt_version,
+        status="approved",
+        reviewer_decision="auto_approved",
+        review_id=None,
+        execution_trace=trace,
+        sources=sources,
+    )
+    response = {
+        "status": "approved",
+        "trace_id": trace_id,
+        "system": system_id,
+        "question": question,
+        "answer": answer,
+        "sources": sources,
+    }
+    if agent_task_id:
+        response["agent_task_id"] = agent_task_id
+    if formatted_stats:
+        response["stats"] = formatted_stats
+    record_query_route(
+        {
+            "timestamp": utc_now_iso(),
+            "trace_id": trace_id,
+            "route_name": route_name,
+            "status": "approved",
+            "system": system_id,
+            "question": question,
+            "question_preview": question[:120],
+            "agent_task_id": agent_task_id,
+            "review_id": None,
+        }
+    )
+    return response
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Krionis Pipeline API",
@@ -136,11 +372,14 @@ def create_app() -> FastAPI:
     app.include_router(review_router)
     app.include_router(platform_router)
     app.include_router(ui_router)
+    app.include_router(root_router)
+    _wire_orchestrator(app)
 
     @app.get("/health", tags=["Health"])
     def health() -> dict[str, str]:
         logger.info("Health check called")
         review_store.init_db()
+        metadata_store.init_db()
         return {"status": "ok"}
 
     @app.post("/query", tags=["Query"], response_model=None)
@@ -149,10 +388,8 @@ def create_app() -> FastAPI:
         _: Request,
         x_user_id: str | None = Header(default=None),
     ) -> dict[str, Any] | JSONResponse:
-        cfg = load_config()
         trace_id = str(uuid4())
         user_id = get_user_id(x_user_id, default="anonymous")
-        model_version, prompt_version = get_version_placeholders()
 
         try:
             logger.info(
@@ -160,91 +397,52 @@ def create_app() -> FastAPI:
                 payload.system,
                 payload.question,
             )
-            result = get_orchestrator().run_query(
-                system_name=payload.system,
-                question=payload.question,
-            )
-            answer = str(result.get("answer") or "")
-            sources = list(result.get("sources") or [])
-            stats = dict(result.get("stats") or {})
-            retrieved_documents = list(result.get("retrieved_documents") or [])
-            formatted_stats = _format_stats(stats, cfg)
-            trace = _build_trace(trace_id, "evaluated", formatted_stats)
-
-            if requires_human_review(payload.question, answer):
-                review_item = create_review_item(
-                    payload.question,
-                    answer,
-                    system_id=payload.system,
-                    user_id=user_id,
-                    trace_id=trace_id,
-                    retrieved_documents=retrieved_documents,
-                    response_preview=answer[: get_response_preview_chars()],
-                )
-                review_store.save_review(review_item)
-                trace["steps"].append(
-                    {"stage": "review_queued", "timestamp": utc_now_iso()}
-                )
-                audit.log_query_event(
-                    trace_id=trace_id,
-                    system_id=payload.system,
-                    query=payload.question,
-                    generated_response=answer,
-                    final_response=None,
-                    retrieved_documents=retrieved_documents,
-                    user_id=user_id,
-                    model_version=model_version,
-                    prompt_version=prompt_version,
-                    status="pending_review",
-                    reviewer_decision="pending_review",
-                    review_id=review_item["id"],
-                    execution_trace=trace,
-                    sources=sources,
-                )
-                response: dict[str, Any] = {
-                    "status": "pending_review",
-                    "trace_id": trace_id,
-                    "review_id": review_item["id"],
-                    "system": payload.system,
-                    "question": payload.question,
-                    "response_preview": review_item["response_preview"],
-                }
-                if formatted_stats:
-                    response["stats"] = formatted_stats
-                return response
-
-            trace["steps"].append({"stage": "auto_approved", "timestamp": utc_now_iso()})
-            audit.log_query_event(
-                trace_id=trace_id,
+            result = _execute_query(payload.system, payload.question)
+            return _controlled_response(
                 system_id=payload.system,
-                query=payload.question,
-                generated_response=answer,
-                final_response=answer,
-                retrieved_documents=retrieved_documents,
+                question=payload.question,
+                result=result,
                 user_id=user_id,
-                model_version=model_version,
-                prompt_version=prompt_version,
-                status="approved",
-                reviewer_decision="auto_approved",
-                review_id=None,
-                execution_trace=trace,
-                sources=sources,
+                trace_id=trace_id,
+                route_name="direct_query",
             )
-
-            response = {
-                "status": "approved",
-                "trace_id": trace_id,
-                "system": payload.system,
-                "question": payload.question,
-                "answer": answer,
-                "sources": sources,
-            }
-            if formatted_stats:
-                response["stats"] = formatted_stats
-            return response
 
         except Exception as exc:
             logger.exception("Error processing query")
+            return JSONResponse(status_code=500, content={"error": str(exc)})
+
+    @app.post("/orchestrator/query", tags=["Query"], response_model=None)
+    async def query_orchestrated_system(
+        payload: ControlledAgentQueryRequest,
+        _: Request,
+        x_user_id: str | None = Header(default=None),
+    ) -> dict[str, Any] | JSONResponse:
+        trace_id = str(uuid4())
+        user_id = get_user_id(x_user_id, default="anonymous")
+
+        try:
+            logger.info(
+                "Received orchestrated query: task_id='%s', system='%s', question='%s'",
+                payload.task_id,
+                payload.system,
+                payload.question,
+            )
+            # Agent lifecycle remains in the orchestrator, but all answer generation
+            # is isolated in the dedicated query worker so the web server stays alive
+            # during cold model load or heavy local inference.
+            result = _execute_query(payload.system, payload.question)
+            return _controlled_response(
+                system_id=payload.system,
+                question=payload.question,
+                result=result,
+                user_id=user_id,
+                trace_id=trace_id,
+                route_name="orchestrator_query",
+                agent_task_id=payload.task_id,
+            )
+
+        except Exception as exc:
+            logger.exception("Error processing orchestrated query")
             return JSONResponse(status_code=500, content={"error": str(exc)})
 
     _mount_web(app)

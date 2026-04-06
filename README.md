@@ -105,6 +105,12 @@ Krionis now includes a dedicated docs site scaffold for API consumers and platfo
 - ReDoc reference: `/api/reference`
 - Static docs source: `docs/`
 - Docs configuration: `mkdocs.yml`
+- Operator console: `/`
+- Telemetry page: `/ui/telemetry`
+- Runtime page: `/ui/runtime`
+- Configuration page: `/ui/configuration`
+- Result records page: `/ui/records`
+- Reviewer dashboard: `/ui/reviews`
 
 Build the docs site locally with:
 
@@ -112,4 +118,32 @@ Build the docs site locally with:
 pip install -r requirements-docs.txt
 mkdocs build --strict
 ```
+
+## Operator workflow
+
+The integrated platform now exposes one operator-first flow:
+
+1. Start an agent from the landing page.
+2. Rebuild the retrieval cache when source files change.
+3. Submit a controlled query through the selected agent.
+4. Review flagged outputs in the review dashboard.
+5. Rate outputs as `Good` or `Bad`, with the result stored in local metadata records.
+
+All of those interactions are also available through the API, so teams can build their own frontend on top of the same contract.
+
+## Docker
+
+The repository now includes a containerized startup path for the integrated API plus orchestrator runtime:
+
+```bash
+docker compose up --build
+```
+
+The compose file mounts:
+
+- `./config` to `/app/config`
+- `./data` to `/app/data`
+- `./indices` to `/app/indices`
+
+So local documents, indexes, review records, audit logs, and result metadata stay outside the image.
 

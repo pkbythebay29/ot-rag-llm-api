@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Krionis Platform</title>
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --panel: rgba(255, 255, 255, 0.82);
+      --panel-strong: rgba(255, 255, 255, 0.94);
+      --ink: #111111;
+      --muted: #6e6e73;
+      --line: rgba(17, 17, 17, 0.08);
+      --line-strong: rgba(17, 17, 17, 0.14);
+      --fill: #111111;
+      --fill-soft: rgba(17, 17, 17, 0.06);
+      --shadow: 0 24px 60px rgba(15, 15, 15, 0.08);
+      --radius-xl: 28px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(0, 0, 0, 0.05), transparent 28%),
+        linear-gradient(180deg, #fbfbfc 0%, var(--bg) 100%);
+    }
+
+    .shell {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 28px 20px 40px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      backdrop-filter: blur(20px);
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      padding: 28px 30px;
+      background: var(--panel-strong);
+      margin-bottom: 20px;
+    }
+
+    .nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+    }
+
+    h1 {
+      font-size: 2.4rem;
+      font-weight: 650;
+      letter-spacing: -0.04em;
+    }
+
+    h2 {
+      font-size: 1.55rem;
+      font-weight: 620;
+    }
+
+    h3 {
+      font-size: 0.98rem;
+      font-weight: 620;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(340px, 1fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .main {
+      padding: 28px;
+    }
+
+    .sidebar {
+      display: grid;
+      gap: 16px;
+    }
+
+    .sidebar .panel {
+      padding: 22px;
+    }
+
+    .sub {
+      margin: 8px 0 0;
+    }
+
+    .divider {
+      height: 1px;
+      margin: 24px 0;
+      background: var(--line);
+    }
+
+    .label {
+      display: block;
+      margin: 18px 0 8px;
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+
+    input, textarea {
+      width: 100%;
+      border: 1px solid var(--line-strong);
+      border-radius: 18px;
+      padding: 14px 16px;
+      font: inherit;
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--ink);
+      outline: none;
+      transition: border-color 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+    }
+
+    input:focus, textarea:focus {
+      border-color: rgba(17, 17, 17, 0.24);
+      box-shadow: 0 0 0 4px rgba(17, 17, 17, 0.05);
+    }
+
+    textarea {
+      min-height: 184px;
+      resize: vertical;
+    }
+
+    textarea:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .controls, .feedback-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    button, .linkbtn {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.16s ease, opacity 0.16s ease;
+    }
+
+    button:hover, .linkbtn:hover { transform: translateY(-1px); }
+    button:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+    .primary { background: var(--fill); color: #fff; }
+    .secondary { background: var(--fill-soft); color: var(--ink); }
+    .mini { padding: 9px 12px; font-size: 0.84rem; }
+
+    .out {
+      margin-top: 18px;
+      padding: 16px 18px;
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.88);
+      white-space: pre-wrap;
+      line-height: 1.55;
+    }
+
+    .muted { color: var(--muted); }
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.88rem;
+    }
+
+    .status-card {
+      padding: 18px;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid var(--line);
+    }
+
+    .status-top, .kv-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 82px;
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: var(--fill-soft);
+      color: var(--ink);
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    .progress {
+      height: 8px;
+      margin-top: 16px;
+      border-radius: 999px;
+      background: rgba(17, 17, 17, 0.08);
+      overflow: hidden;
+    }
+
+    .progress > div {
+      height: 100%;
+      width: 0;
+      border-radius: 999px;
+      background: var(--fill);
+      transition: width 0.24s ease;
+    }
+
+    .kv, .stack, .list {
+      display: grid;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .list-item {
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.88);
+    }
+
+    .list-item.active {
+      border-color: rgba(17, 17, 17, 0.24);
+      box-shadow: inset 0 0 0 1px rgba(17, 17, 17, 0.08);
+    }
+
+    .page-link.active {
+      background: var(--fill);
+      color: #fff;
+    }
+
+    .item-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .item-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .tiny {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 680px) {
+      .shell { padding: 18px 12px 28px; }
+      .hero, .main, .sidebar .panel { padding: 20px; }
+      .hero h1 { font-size: 2rem; }
+      textarea { min-height: 160px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="panel hero">
+      <h1>Krionis</h1>
+      <p>The operator view only keeps the controllable workflow in one place: agents, retrieval cache, query routing, review, and rating.</p>
+    </section>
+
+    <nav class="nav">
+      <a class="linkbtn secondary page-link active" href="/">Operator</a>
+      <a class="linkbtn secondary page-link" href="/ui/telemetry">Telemetry</a>
+      <a class="linkbtn secondary page-link" href="/ui/runtime">Runtime</a>
+      <a class="linkbtn secondary page-link" href="/ui/configuration">Configuration</a>
+      <a class="linkbtn secondary page-link" href="/ui/records">Records</a>
+      <a class="linkbtn secondary page-link" href="/ui/reviews">Reviews</a>
+    </nav>
+
+    <section class="grid">
+      <div class="panel main">
+        <h2>Workflow</h2>
+        <p class="sub">Start an agent, select the active agent you want to use, submit a controlled query, review if needed, and rate the result.</p>
+
+        <label class="label" for="system">System</label>
+        <input id="system" value="TestSystem" />
+
+        <div class="controls">
+          <button id="start-agent" class="primary">Start Agent</button>
+          <button id="rebuild-index" class="secondary">Rebuild Cache</button>
+          <a class="linkbtn secondary" href="/ui/reviews" target="_blank" rel="noreferrer">Review Dashboard</a>
+          <a class="linkbtn secondary" href="/api/docs" target="_blank" rel="noreferrer">API</a>
+        </div>
+
+        <div id="agent-message" class="out muted">No agent started yet.</div>
+        <div id="selected-agent-box" class="out mono" style="display:none;"></div>
+
+        <div class="divider"></div>
+
+        <label class="label" for="question">Query</label>
+        <textarea id="question" placeholder="Start an agent to enable querying." disabled></textarea>
+
+        <div class="controls">
+          <button id="submit-query" class="primary" disabled>Submit</button>
+        </div>
+
+        <div id="response-box" class="out" style="display:none;"></div>
+        <div id="trace-box" class="out mono" style="display:none;"></div>
+        <div id="quality-box" class="feedback-row" style="display:none;">
+          <button id="good-btn" class="secondary" disabled>Good</button>
+          <button id="bad-btn" class="secondary" disabled>Bad</button>
+        </div>
+        <div id="quality-note" class="tiny" style="display:none;"></div>
+      </div>
+
+      <aside class="sidebar">
+        <section class="panel">
+          <div class="status-card">
+            <div class="status-top">
+              <div>
+                <h3>Agent Readiness</h3>
+                <div id="readiness-text" class="tiny">Idle</div>
+              </div>
+              <div id="readiness-chip" class="status-chip">Idle</div>
+            </div>
+            <div class="progress"><div id="readiness-bar"></div></div>
+            <div id="readiness-detail" class="tiny" style="margin-top:12px;">Press Start Agent to begin.</div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h3>Dashboard</h3>
+          <div class="kv">
+            <div class="kv-row"><span>Pending reviews</span><strong id="pending-reviews">0</strong></div>
+            <div class="kv-row"><span>Active agents</span><strong id="active-agents">0</strong></div>
+            <div class="kv-row"><span>Can start another</span><strong id="capacity-flag">Checking...</strong></div>
+          </div>
+          <div id="capacity-note" class="tiny" style="margin-top:14px;"></div>
+        </section>
+
+        <section class="panel">
+          <h3>Knowledge Base</h3>
+          <div id="index-box" class="list tiny"></div>
+        </section>
+
+        <section class="panel">
+          <h3>Agents</h3>
+          <div id="agents-box" class="list tiny"></div>
+        </section>
+
+        <section class="panel">
+          <h3>Recent Routes</h3>
+          <div id="routes-box" class="list tiny"></div>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const startAgentButton = document.getElementById("start-agent");
+    const rebuildIndexButton = document.getElementById("rebuild-index");
+    const submitQueryButton = document.getElementById("submit-query");
+    const questionBox = document.getElementById("question");
+    const systemBox = document.getElementById("system");
+    const agentMessage = document.getElementById("agent-message");
+    const selectedAgentBox = document.getElementById("selected-agent-box");
+    const responseBox = document.getElementById("response-box");
+    const traceBox = document.getElementById("trace-box");
+    const qualityBox = document.getElementById("quality-box");
+    const qualityNote = document.getElementById("quality-note");
+    const goodButton = document.getElementById("good-btn");
+    const badButton = document.getElementById("bad-btn");
+    const readinessChip = document.getElementById("readiness-chip");
+    const readinessText = document.getElementById("readiness-text");
+    const readinessDetail = document.getElementById("readiness-detail");
+    const readinessBar = document.getElementById("readiness-bar");
+    const pendingReviews = document.getElementById("pending-reviews");
+    const activeAgents = document.getElementById("active-agents");
+    const capacityFlag = document.getElementById("capacity-flag");
+    const capacityNote = document.getElementById("capacity-note");
+    const indexBox = document.getElementById("index-box");
+    const agentsBox = document.getElementById("agents-box");
+    const routesBox = document.getElementById("routes-box");
+
+    let currentTaskId = null;
+    let currentReady = false;
+    let currentTrace = null;
+    let currentReviewId = null;
+    let currentResponseText = "";
+    let currentAgents = [];
+    let refreshHandle = null;
+    let refreshSeconds = 5;
+
+    function setReadiness(state, detail) {
+      const mapping = {
+        idle: { label: "Idle", width: "0%" },
+        starting: { label: "Starting", width: "45%" },
+        ready: { label: "Ready", width: "100%" },
+        blocked: { label: "Blocked", width: "100%" }
+      };
+      const next = mapping[state] || mapping.idle;
+      readinessChip.textContent = next.label;
+      readinessText.textContent = next.label;
+      readinessDetail.textContent = detail;
+      readinessBar.style.width = next.width;
+    }
+
+    function setQueryEnabled(enabled) {
+      questionBox.disabled = !enabled;
+      submitQueryButton.disabled = !enabled;
+      questionBox.placeholder = enabled ? "Ask a controlled query." : "Start an agent to enable querying.";
+    }
+
+    function syncSelectedAgent() {
+      let selected = currentAgents.find((agent) => (agent.name || agent.task_id) === currentTaskId) || null;
+      if (!selected) {
+        selected = currentAgents.find((agent) => agent.ready) || currentAgents[0] || null;
+        currentTaskId = selected ? (selected.name || selected.task_id) : null;
+      }
+      currentReady = Boolean(selected && selected.ready);
+      if (selected) {
+        selectedAgentBox.style.display = "block";
+        selectedAgentBox.textContent = `selected_agent=${selected.name || selected.task_id}\nagent_type=${selected.agent_type}\nsystem=${selected.system || "unknown"}\nready=${selected.ready ? "true" : "false"}`;
+        setReadiness(selected.ready ? "ready" : "starting", selected.ready ? `Agent ${selected.name || selected.task_id} is ready.` : `Agent ${selected.name || selected.task_id} is starting.`);
+      } else {
+        selectedAgentBox.style.display = "none";
+        currentTaskId = null;
+        setReadiness("idle", "Press Start Agent to begin.");
+      }
+      setQueryEnabled(Boolean(selected && selected.ready));
+    }
+
+    function renderIndexes(indexes) {
+      const targetSystem = systemBox.value.trim() || "TestSystem";
+      const item = (indexes || []).find((entry) => entry.system_name === targetSystem) || (indexes || [])[0];
+      if (!item) {
+        indexBox.innerHTML = `<div class="list-item"><strong>No systems configured.</strong></div>`;
+        return;
+      }
+      const files = (item.source_files || []).length
+        ? item.source_files.map((name) => `<div>${name}</div>`).join("")
+        : "<div>No source files found yet.</div>";
+      indexBox.innerHTML = `
+        <div class="list-item active">
+          <div><strong>${item.system_name}</strong><br>${item.index_exists ? "Index available" : "Index missing"}</div>
+          <div style="margin-top:10px;"><strong>Source directory</strong><br>${item.source_directory}</div>
+          <div style="margin-top:10px;"><strong>Index directory</strong><br>${item.index_directory}</div>
+          <div style="margin-top:10px;"><strong>Indexed chunks</strong><br>${item.indexed_chunk_count ?? "unknown"}</div>
+          <div style="margin-top:10px;"><strong>Last rebuilt</strong><br>${item.last_built_at || "Never"}</div>
+          <div style="margin-top:10px;"><strong>Source files</strong><br>${files}</div>
+        </div>
+      `;
+    }
+
+    function renderAgents(orchestrator) {
+      currentAgents = orchestrator.active_agents || [];
+      syncSelectedAgent();
+      if (!currentAgents.length) {
+        agentsBox.innerHTML = `<div class="list-item"><strong>No active agents.</strong><br>Start Agent to create a controlled route target.</div>`;
+        return;
+      }
+      agentsBox.innerHTML = currentAgents.map((agent) => {
+        const taskId = agent.name || agent.task_id;
+        const isActive = currentTaskId === taskId;
+        return `
+          <div class="list-item ${isActive ? "active" : ""}">
+            <div class="item-head">
+              <div><strong>${taskId}</strong><br>${agent.agent_type} · ${agent.system || "unknown system"} · ${agent.ready ? "ready" : "starting"}</div>
+              <div class="status-chip">${isActive ? "Selected" : (agent.ready ? "Ready" : "Starting")}</div>
+            </div>
+            <div class="item-actions">
+              <button class="secondary mini" onclick="selectAgent(${JSON.stringify(taskId)})">Use</button>
+              <button class="secondary mini" onclick="stopAgent(${JSON.stringify(taskId)})">Stop</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function updateRefresh(seconds) {
+      const nextSeconds = Math.max(1, Number(seconds) || 5);
+      if (nextSeconds === refreshSeconds && refreshHandle) {
+        return;
+      }
+      refreshSeconds = nextSeconds;
+      if (refreshHandle) {
+        window.clearInterval(refreshHandle);
+      }
+      refreshHandle = window.setInterval(refreshDashboard, refreshSeconds * 1000);
+    }
+
+    function renderRoutes(routes) {
+      if (!routes || !routes.length) {
+        routesBox.innerHTML = `<div class="list-item"><strong>No controlled queries yet.</strong></div>`;
+        return;
+      }
+      routesBox.innerHTML = routes.map((route) => `
+        <div class="list-item">
+          <div><strong>${route.status}</strong><br>${route.question_preview || route.question || ""}</div>
+          <div style="margin-top:10px;">Agent: ${route.agent_task_id || "direct"}</div>
+          <div>Trace: ${route.trace_id || "n/a"}</div>
+          <div>Review: ${route.review_id || "n/a"}</div>
+          <div>${route.timestamp || ""}</div>
+        </div>
+      `).join("");
+    }
+
+    async function refreshDashboard() {
+      try {
+        const res = await fetch("/platform/dashboard");
+        const json = await res.json();
+        updateRefresh(json.refresh?.telemetry_refresh_seconds || 5);
+        pendingReviews.textContent = String(json.pending_reviews ?? 0);
+        activeAgents.textContent = String((json.orchestrator?.active_agents || []).length);
+        renderIndexes(json.indexes || []);
+        renderAgents(json.orchestrator || {});
+        renderRoutes(json.recent_routes || []);
+        const capacity = json.orchestrator?.capacity || {};
+        capacityFlag.textContent = capacity.can_start_another ? "Yes" : "No";
+        capacityNote.textContent = `${capacity.reason || ""} · free ${capacity.available_memory_gb ?? "?"} GB / ${capacity.total_memory_gb ?? "?"} GB · CPU ${capacity.cpu_percent ?? "?"}% · recommended max ${capacity.recommended_max_agents ?? "?"}`;
+      } catch (error) {
+        capacityFlag.textContent = "Unavailable";
+        capacityNote.textContent = `Dashboard unavailable: ${error.message}`;
+        indexBox.innerHTML = `<div class="list-item"><strong>Index status unavailable.</strong></div>`;
+        agentsBox.innerHTML = `<div class="list-item"><strong>Agent list unavailable.</strong></div>`;
+        routesBox.innerHTML = `<div class="list-item"><strong>Route history unavailable.</strong></div>`;
+      }
+    }
+
+    async function startAgent() {
+      startAgentButton.disabled = true;
+      setReadiness("starting", "Starting agent...");
+      agentMessage.textContent = "Starting agent...";
+      try {
+        const dashboardRes = await fetch("/platform/dashboard");
+        const dashboard = await dashboardRes.json();
+        const capacity = dashboard.orchestrator?.capacity || {};
+        if (!capacity.can_start_another) {
+          setReadiness("blocked", capacity.reason || "Another agent cannot be started right now.");
+          agentMessage.textContent = capacity.reason || "Another agent cannot be started right now.";
+          return;
+        }
+        const res = await fetch("/platform/agents/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            system: systemBox.value.trim() || "TestSystem",
+            agent_type: "retriever",
+            name_prefix: "agent",
+            tenant: "default"
+          })
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json.detail || "Agent start failed.");
+        }
+        currentTaskId = json.task_id;
+        currentReady = Boolean(json.ready);
+        agentMessage.textContent = `Started ${json.name || json.task_id}.`;
+        await refreshDashboard();
+      } catch (error) {
+        currentTaskId = null;
+        currentReady = false;
+        setQueryEnabled(false);
+        setReadiness("blocked", error.message);
+        agentMessage.textContent = `${error.message}\n\nSee the Runtime panel on the right for PID, memory, and recent logs.`;
+      } finally {
+        startAgentButton.disabled = false;
+      }
+    }
+
+    async function rebuildIndex() {
+      const system = systemBox.value.trim() || "TestSystem";
+      rebuildIndexButton.disabled = true;
+      agentMessage.textContent = `Rebuilding retrieval cache for ${system}...`;
+      try {
+        const res = await fetch(`/platform/indexes/${encodeURIComponent(system)}/rebuild`, {
+          method: "POST"
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json.detail || "Index rebuild failed.");
+        }
+        agentMessage.textContent = `Rebuilt cache for ${system}. Indexed chunks: ${json.report?.num_chunks ?? "unknown"}.`;
+        await refreshDashboard();
+      } catch (error) {
+        agentMessage.textContent = `${error.message}\n\nSee the Runtime panel on the right for recent logs and diagnostics.`;
+      } finally {
+        rebuildIndexButton.disabled = false;
+      }
+    }
+
+    async function submitQuery() {
+      const question = questionBox.value.trim();
+      if (!currentTaskId || !currentReady || !question) {
+        return;
+      }
+      submitQueryButton.disabled = true;
+      responseBox.style.display = "block";
+      responseBox.textContent = `Running controlled query through ${currentTaskId}...`;
+      traceBox.style.display = "none";
+      qualityBox.style.display = "none";
+      qualityNote.style.display = "none";
+      try {
+        const res = await fetch("/orchestrator/query", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            task_id: currentTaskId,
+            system: systemBox.value.trim() || "TestSystem",
+            question,
+            context: ""
+          })
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json.error || json.detail || "Query failed.");
+        }
+        currentTrace = json.trace_id || null;
+        currentReviewId = json.review_id || null;
+        currentResponseText = json.answer || json.response_preview || "";
+        responseBox.textContent = json.status === "pending_review"
+          ? `Review required.\n\n${json.response_preview || "Preview unavailable."}\n\nOpen the review dashboard to sign off.`
+          : (json.answer || "No answer returned.");
+        traceBox.style.display = "block";
+        traceBox.textContent = `status=${json.status || "unknown"}\ntrace_id=${json.trace_id || "n/a"}\nreview_id=${json.review_id || "n/a"}\nagent=${json.agent_task_id || currentTaskId}`;
+        qualityBox.style.display = "flex";
+        goodButton.disabled = false;
+        badButton.disabled = false;
+        qualityNote.style.display = "block";
+        qualityNote.textContent = json.status === "pending_review" ? "Rate the generated draft after review." : "Rate the response quality.";
+        await refreshDashboard();
+      } catch (error) {
+        responseBox.textContent = `${error.message}\n\nSee the Runtime panel on the right for recent logs and diagnostics.`;
+      } finally {
+        submitQueryButton.disabled = false;
+      }
+    }
+
+    async function sendQuality(rating) {
+      if (!currentTrace) {
+        return;
+      }
+      goodButton.disabled = true;
+      badButton.disabled = true;
+      qualityNote.style.display = "block";
+      qualityNote.textContent = "Saving rating...";
+      try {
+        const res = await fetch("/feedback/quality", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            trace_id: currentTrace,
+            review_id: currentReviewId,
+            rating,
+            system: systemBox.value.trim() || "TestSystem",
+            question: questionBox.value.trim(),
+            response: currentResponseText
+          })
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json.detail || "Failed to save rating.");
+        }
+        qualityNote.textContent = `Saved ${rating} rating for trace ${json.trace_id || currentTrace}.`;
+      } catch (error) {
+        qualityNote.textContent = error.message;
+        goodButton.disabled = false;
+        badButton.disabled = false;
+      }
+    }
+
+    async function stopAgent(taskId) {
+      agentMessage.textContent = `Stopping ${taskId}...`;
+      try {
+        const res = await fetch(`/platform/agents/${encodeURIComponent(taskId)}`, { method: "DELETE" });
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json.detail || "Failed to stop agent.");
+        }
+        if (currentTaskId === taskId) {
+          currentTaskId = null;
+        }
+        agentMessage.textContent = `Stopped ${json.task_id || taskId}.`;
+        await refreshDashboard();
+      } catch (error) {
+        agentMessage.textContent = `${error.message}\n\nSee the Runtime panel on the right for recent logs and diagnostics.`;
+      }
+    }
+
+    function selectAgent(taskId) {
+      currentTaskId = taskId;
+      syncSelectedAgent();
+    }
+
+    startAgentButton.addEventListener("click", startAgent);
+    rebuildIndexButton.addEventListener("click", rebuildIndex);
+    submitQueryButton.addEventListener("click", submitQuery);
+    goodButton.addEventListener("click", () => sendQuality("good"));
+    badButton.addEventListener("click", () => sendQuality("bad"));
+    questionBox.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        submitQuery();
+      }
+    });
+
+    window.selectAgent = selectAgent;
+    window.stopAgent = stopAgent;
+
+    setReadiness("idle", "Press Start Agent to begin.");
+    setQueryEnabled(false);
+    refreshDashboard();
+  </script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Krionis Records</title>
+  <style>
+    :root { --bg:#f5f5f7; --panel:rgba(255,255,255,.9); --ink:#111; --muted:#6e6e73; --line:rgba(17,17,17,.1); --fill:#111; --fill-soft:rgba(17,17,17,.06); --shadow:0 24px 60px rgba(15,15,15,.08); --radius-xl:28px; }
+    * { box-sizing:border-box; } body { margin:0; min-height:100vh; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue",Arial,sans-serif; background:linear-gradient(180deg,#fbfbfc 0%,var(--bg) 100%); color:var(--ink); }
+    .shell { max-width:1320px; margin:0 auto; padding:28px 20px 40px; } .panel { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius-xl); box-shadow:var(--shadow); padding:24px; } .hero { margin-bottom:18px; } .nav, .grid { display:grid; gap:16px; } .nav { grid-template-columns:repeat(auto-fit,minmax(120px,max-content)); margin-bottom:18px; } .grid { grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); } .linkbtn,.out,.item { border-radius:20px; border:1px solid var(--line); background:rgba(255,255,255,.88); padding:14px 16px; } .linkbtn { text-decoration:none; color:var(--ink); background:var(--fill-soft); font-weight:600; display:inline-flex; justify-content:center; } .linkbtn.active { background:var(--fill); color:#fff; } p { color:var(--muted); line-height:1.6; } .tiny { color:var(--muted); font-size:.86rem; line-height:1.55; } .mono { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="panel hero">
+      <h1>Result Records</h1>
+      <p>Quality ratings and review decisions persisted in the local SQLite metadata store.</p>
+    </section>
+    <nav class="nav">
+      <a class="linkbtn" href="/">Operator</a>
+      <a class="linkbtn" href="/ui/telemetry">Telemetry</a>
+      <a class="linkbtn" href="/ui/runtime">Runtime</a>
+      <a class="linkbtn" href="/ui/configuration">Configuration</a>
+      <a class="linkbtn active" href="/ui/records">Records</a>
+      <a class="linkbtn" href="/ui/reviews">Reviews</a>
+    </nav>
+    <section class="grid">
+      <div class="panel"><h2>Summary</h2><div id="summary-box" class="out tiny"></div></div>
+      <div class="panel"><h2>Database</h2><div id="db-box" class="out tiny mono"></div></div>
+      <div class="panel" style="grid-column:1 / -1;"><h2>Recent Records</h2><div id="records-box" class="grid"></div></div>
+    </section>
+  </main>
+  <script>
+    const summaryBox = document.getElementById("summary-box");
+    const dbBox = document.getElementById("db-box");
+    const recordsBox = document.getElementById("records-box");
+    let refreshHandle = null;
+    let refreshSeconds = 5;
+    function scheduleRefresh(seconds) { const next = Math.max(1, Number(seconds) || 5); if (next === refreshSeconds && refreshHandle) return; refreshSeconds = next; if (refreshHandle) clearInterval(refreshHandle); refreshHandle = setInterval(loadRecords, refreshSeconds * 1000); }
+    async function loadRecords() {
+      try {
+        const cfgRes = await fetch("/platform/configuration");
+        const cfg = await cfgRes.json();
+        scheduleRefresh(cfg.refresh?.telemetry_refresh_seconds || 5);
+        const res = await fetch("/platform/records?limit=25");
+        const json = await res.json();
+        const summary = json.summary || {};
+        summaryBox.innerHTML = `<strong>Good</strong><br>${summary.quality_good ?? 0}<br><br><strong>Bad</strong><br>${summary.quality_bad ?? 0}<br><br><strong>Approved reviews</strong><br>${summary.reviews_approved ?? 0}<br><br><strong>Rejected reviews</strong><br>${summary.reviews_rejected ?? 0}`;
+        dbBox.textContent = json.database_path || "unknown";
+        const items = json.items || [];
+        recordsBox.innerHTML = items.length ? items.map((item) => {
+          const meta = item._meta || {};
+          return `<div class="item tiny"><strong>${meta.event_type || "record"}</strong><br>${meta.created_at || ""}<br><br>trace ${meta.trace_id || "n/a"}<br>review ${meta.review_id || "n/a"}<br>status ${meta.status || meta.rating || "n/a"}<br><br>${item.query || item.reviewer_notes || item.response || ""}</div>`;
+        }).join("") : `<div class="item tiny"><strong>No records yet</strong></div>`;
+      } catch (error) { summaryBox.textContent = error.message; }
+    }
+    loadRecords();
+  </script>
+</body>
+</html>

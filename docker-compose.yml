@@ -1,0 +1,16 @@
+services:
+  krionis-platform:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: krionis/platform:local
+    container_name: krionis-platform
+    ports:
+      - "8000:8000"
+    environment:
+      KRIONIS_REVIEW_API_KEY: ${KRIONIS_REVIEW_API_KEY:-local-review-key}
+    volumes:
+      - ./config:/app/config
+      - ./data:/app/data
+      - ./indices:/app/indices
+    restart: unless-stopped

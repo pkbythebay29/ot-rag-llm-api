@@ -14,8 +14,22 @@ Krionis is a human-in-the-loop controlled RAG platform for traceable, reviewable
 - Interactive API reference: `/api/docs`
 - ReDoc reference: `/api/reference`
 - OpenAPI schema: `/api/openapi.json`
-- Reviewer UI: `/ui/reviews`
 - Operator query UI: `/`
+- Telemetry UI: `/ui/telemetry`
+- Runtime UI: `/ui/runtime`
+- Configuration UI: `/ui/configuration`
+- Result records UI: `/ui/records`
+- Reviewer UI: `/ui/reviews`
+
+## Operator workflow
+
+The built-in console is now split into focused pages:
+
+- Operator: start agents, rebuild the retrieval cache, submit controlled queries, route through a selected agent, and rate responses.
+- Telemetry: inspect agent inventory, queue telemetry, and recent routed query events.
+- Runtime: inspect the main process, worker state, and recent logs.
+- Configuration: inspect the active YAML configuration, resolved runtime choices, and local storage paths.
+- Records: inspect the locally persisted metadata for quality ratings and review decisions.
 
 ## What you can build on top
 

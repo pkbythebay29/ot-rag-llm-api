@@ -1,4 +1,4 @@
-from rag_llm_api_pipeline.db import review_store
+from rag_llm_api_pipeline.db import metadata_store, review_store
 
 
 def _submit_flagged_query(client):
@@ -109,9 +109,18 @@ def test_root_ui_explains_hitl_and_audit(app_client):
     response = client.get("/")
 
     assert response.status_code == 200
-    assert "Krionis HITL RAG" in response.text
+    assert "Krionis" in response.text
+    assert "Workflow" in response.text
+    assert "Start Agent" in response.text
+    assert "Rebuild Cache" in response.text
+    assert "Good" in response.text
+    assert "/ui/telemetry" in response.text
+    assert "/ui/runtime" in response.text
+    assert "/ui/configuration" in response.text
+    assert "/ui/records" in response.text
     assert "/ui/reviews" in response.text
-    assert "mandatory review" in response.text.lower()
+    assert "controlled query" in response.text.lower()
+    assert "/orchestrator/query" in response.text
 
 
 def test_platform_metadata_and_audit_routes(app_client):
@@ -144,3 +153,132 @@ def test_platform_metadata_and_audit_routes(app_client):
     )
     assert review_events.status_code == 200
     assert review_events.json()["review_id"] == review_id
+
+    dashboard = client.get("/platform/dashboard")
+    assert dashboard.status_code == 200
+    assert dashboard.json()["models"]["llm_model"]
+    assert "quantization_backend" in dashboard.json()["models"]
+    assert "effective_quantization_backend" in dashboard.json()["models"]
+    assert "indexes" in dashboard.json()
+    assert "recent_routes" in dashboard.json()
+    assert dashboard.json()["recent_routes"][0]["trace_id"] == trace_id
+    assert "can_start_another" in dashboard.json()["orchestrator"]["capacity"]
+
+    indexes = client.get("/platform/indexes")
+    assert indexes.status_code == 200
+    assert indexes.json()["systems"][0]["source_directory"]
+    assert indexes.json()["systems"][0]["index_directory"]
+
+    telemetry_snapshot = client.get("/platform/telemetry")
+    assert telemetry_snapshot.status_code == 200
+    assert telemetry_snapshot.json()["refresh"]["telemetry_refresh_seconds"] >= 1
+
+    configuration = client.get("/platform/configuration")
+    assert configuration.status_code == 200
+    assert configuration.json()["paths"]["metadata_store"]
+
+
+def test_quality_feedback_endpoint_records_rating(app_client):
+    client = app_client["client"]
+    response = client.post(
+        "/feedback/quality",
+        json={
+            "trace_id": "trace-123",
+            "rating": "good",
+            "system": "TestSystem",
+            "question": "Was that good?",
+            "response": "Yes.",
+        },
+        headers={"x-user-id": "operator-1"},
+    )
+    assert response.status_code == 200
+    assert response.json()["rating"] == "good"
+    assert response.json()["trace_id"] == "trace-123"
+
+    records = metadata_store.list_records()
+    assert any(item["_meta"]["rating"] == "good" for item in records)
+
+
+def test_orchestrator_routes_are_exposed(app_client):
+    client = app_client["client"]
+
+    catalog = client.get("/orchestrator/catalog")
+    assert catalog.status_code == 200
+    assert any(agent["slug"] == "retriever" for agent in catalog.json()["agents"])
+
+    diagnostics = client.get("/orchestrator/diag/agents")
+    assert diagnostics.status_code == 200
+    assert "registered" in diagnostics.json()
+
+    telemetry = client.get("/orchestrator/telemetry")
+    assert telemetry.status_code == 200
+
+
+def test_platform_agent_lifecycle_routes(app_client):
+    client = app_client["client"]
+
+    start = client.post(
+        "/platform/agents/start",
+        json={
+            "system": "TestSystem",
+            "agent_type": "retriever",
+            "name_prefix": "agent",
+        },
+    )
+    assert start.status_code == 200
+    task_id = start.json()["task_id"]
+
+    listed = client.get("/platform/agents")
+    assert listed.status_code == 200
+    assert any(item["name"] == task_id for item in listed.json()["items"])
+
+    stopped = client.delete(f"/platform/agents/{task_id}")
+    assert stopped.status_code == 200
+    assert stopped.json()["status"] == "stopped"
+
+
+def test_index_rebuild_endpoint_returns_stubbed_report(app_client, monkeypatch):
+    from rag_llm_api_pipeline.api import platform_routes
+
+    monkeypatch.setattr(
+        platform_routes,
+        "rebuild_index_in_worker",
+        lambda system_name: {"num_chunks": 3, "system": system_name},
+    )
+
+    client = app_client["client"]
+    response = client.post("/platform/indexes/TestSystem/rebuild")
+
+    assert response.status_code == 200
+    assert response.json()["system_name"] == "TestSystem"
+    assert response.json()["report"]["num_chunks"] == 3
+
+
+def test_observability_pages_load(app_client):
+    client = app_client["client"]
+
+    assert client.get("/ui/telemetry").status_code == 200
+    assert client.get("/ui/runtime").status_code == 200
+    assert client.get("/ui/configuration").status_code == 200
+    assert client.get("/ui/records").status_code == 200
+
+
+def test_platform_records_endpoint_returns_summary(app_client):
+    client = app_client["client"]
+
+    client.post(
+        "/feedback/quality",
+        json={
+            "trace_id": "trace-999",
+            "rating": "bad",
+            "system": "TestSystem",
+            "question": "Was that bad?",
+            "response": "No.",
+        },
+        headers={"x-user-id": "operator-1"},
+    )
+
+    records = client.get("/platform/records")
+    assert records.status_code == 200
+    assert records.json()["summary"]["quality_bad"] >= 1
+    assert records.json()["database_path"]

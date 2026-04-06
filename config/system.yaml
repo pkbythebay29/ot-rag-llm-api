@@ -7,9 +7,11 @@ assets:
     docs: []  # Auto-Index all files in settings.data_dir
 
 models:
-  llm_model: Qwen/Qwen3-4B-Instruct-2507
-  device: auto
+  llm_model: Qwen/Qwen2.5-0.5B-Instruct
+  device: cpu
   model_precision: auto
+  quantization_backend: dynamic-int8
+  low_cpu_mem_usage: true
   use_harmony: false
   memory_strategy:
     use_expandable_segments: true
@@ -81,7 +83,7 @@ settings:
   data_dir: data/manuals
   index_dir: indices
   force_rebuild_index: false
-  use_cpu: false
+  use_cpu: true
 
   show_chunks: true
   show_query_time: true
@@ -108,6 +110,11 @@ audit:
 
 feedback:
   corrections_path: data/feedback/corrections.jsonl
+  quality_path: data/feedback/quality_ratings.jsonl
+  metadata_sqlite_path: data/feedback/result_metadata.sqlite3
+
+ui:
+  telemetry_refresh_seconds: 5
 
 security:
   api_key: ""

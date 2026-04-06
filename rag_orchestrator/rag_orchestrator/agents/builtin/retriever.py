@@ -2,13 +2,11 @@ from __future__ import annotations
 from typing import Any, Dict
 from ..base import Agent, AgentSpec
 from ..registry import register
-from ...api._state import provider_pool
 
 
 class RetrieverAgent(Agent):
     def __init__(self, spec: AgentSpec):
         super().__init__(spec)
-        self._provider = provider_pool.get(spec.system)
 
     async def start(self) -> None: ...
     async def stop(self) -> None: ...

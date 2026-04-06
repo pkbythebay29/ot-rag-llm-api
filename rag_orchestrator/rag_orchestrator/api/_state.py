@@ -1,4 +1,5 @@
-import asyncio, os
+import asyncio
+import os
 from rag_orchestrator.runtime.batcher_pool import BatcherPool
 from rag_orchestrator.batching.gatekeeper import Gatekeeper, TenantPolicy
 from .config_bridge import load_bridge_config, resolve_system_yaml
@@ -61,9 +62,11 @@ batchers.register(
 )
 
 manager = AgentManager()
+manager.batchers = batchers._pool
 gate = Gatekeeper(lambda payload, to: batchers.submit("generate", payload, timeout=to))
 
 _started = False
+ensure_started_task = None
 
 
 async def ensure_started():
@@ -79,4 +82,14 @@ async def ensure_started():
         _started = True
 
 
-ensure_started_task = asyncio.create_task(ensure_started())
+def schedule_startup():
+    global ensure_started_task
+    if _started:
+        return ensure_started_task
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return None
+    if ensure_started_task is None or ensure_started_task.done():
+        ensure_started_task = loop.create_task(ensure_started())
+    return ensure_started_task

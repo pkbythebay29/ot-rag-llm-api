@@ -6,6 +6,11 @@ import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from transformers import StoppingCriteria, StoppingCriteriaList  # minimal patch import
 
+try:
+    from torch.ao.quantization import quantize_dynamic
+except ImportError:  # pragma: no cover - compatibility fallback
+    from torch.quantization import quantize_dynamic
+
 CONFIG_PATH = "config/system.yaml"
 
 
@@ -42,8 +47,35 @@ def _select_dtype(device: str):
     return torch.float16 if device == "cuda" else torch.float32
 
 
+def _select_quantization_backend(device: str) -> str:
+    backend = str(_models.get("quantization_backend", "auto")).strip().lower()
+    if backend in {"", "none", "off", "false", "disabled"}:
+        return "none"
+    if backend == "auto":
+        return "dynamic-int8" if device == "cpu" else "none"
+    if device == "cuda":
+        return "none"
+    return backend
+
+
+def _build_model_load_kwargs(device: str, dtype, quant_backend: str) -> dict:
+    kwargs = {
+        "trust_remote_code": True,
+        "low_cpu_mem_usage": bool(_models.get("low_cpu_mem_usage", True)),
+    }
+    if device == "cuda":
+        kwargs["torch_dtype"] = dtype
+        kwargs["device_map"] = "auto"
+        return kwargs
+
+    kwargs["device_map"] = None
+    kwargs["torch_dtype"] = torch.float32 if quant_backend == "dynamic-int8" else dtype
+    return kwargs
+
+
 _device = _select_device()
 _dtype = _select_dtype(_device)
+_quant_backend = _select_quantization_backend(_device)
 
 # CUDA fragmentation mitigation
 if _device == "cuda" and _models.get("memory_strategy", {}).get(
@@ -61,16 +93,18 @@ if tokenizer.pad_token_id is None and tokenizer.eos_token_id is not None:
 
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_NAME,
-    dtype=_dtype,
-    device_map="auto" if _device == "cuda" else None,
-    trust_remote_code=True,
+    **_build_model_load_kwargs(_device, _dtype, _quant_backend),
 )
+
+if _quant_backend == "dynamic-int8":
+    model = quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
+    model.eval()
 
 # Avoid Accelerate conflict
 pipe_kwargs = {
     "model": model,
     "tokenizer": tokenizer,
-    "model_kwargs": {"dtype": _dtype},
+    "model_kwargs": {"torch_dtype": _dtype},
 }
 if _device != "cuda":
     pipe_kwargs["device"] = -1

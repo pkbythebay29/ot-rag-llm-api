@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Krionis Runtime</title>
+  <style>
+    :root { --bg:#f5f5f7; --panel:rgba(255,255,255,.9); --ink:#111; --muted:#6e6e73; --line:rgba(17,17,17,.1); --fill:#111; --fill-soft:rgba(17,17,17,.06); --shadow:0 24px 60px rgba(15,15,15,.08); --radius-xl:28px; }
+    * { box-sizing:border-box; } body { margin:0; min-height:100vh; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue",Arial,sans-serif; background:linear-gradient(180deg,#fbfbfc 0%,var(--bg) 100%); color:var(--ink); }
+    .shell { max-width:1320px; margin:0 auto; padding:28px 20px 40px; } .panel { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius-xl); box-shadow:var(--shadow); padding:24px; } .hero { margin-bottom:18px; } .nav, .grid { display:grid; gap:16px; } .nav { grid-template-columns:repeat(auto-fit,minmax(120px,max-content)); margin-bottom:18px; } .grid { grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); } .linkbtn,.out,.item { border-radius:20px; border:1px solid var(--line); background:rgba(255,255,255,.88); padding:14px 16px; } .linkbtn { text-decoration:none; color:var(--ink); background:var(--fill-soft); font-weight:600; display:inline-flex; justify-content:center; } .linkbtn.active { background:var(--fill); color:#fff; } p { color:var(--muted); line-height:1.6; } .tiny { color:var(--muted); font-size:.86rem; line-height:1.55; } .mono { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="panel hero">
+      <h1>Runtime</h1>
+      <p>Server process state, worker health, and recent runtime logs.</p>
+    </section>
+    <nav class="nav">
+      <a class="linkbtn" href="/">Operator</a>
+      <a class="linkbtn" href="/ui/telemetry">Telemetry</a>
+      <a class="linkbtn active" href="/ui/runtime">Runtime</a>
+      <a class="linkbtn" href="/ui/configuration">Configuration</a>
+      <a class="linkbtn" href="/ui/records">Records</a>
+      <a class="linkbtn" href="/ui/reviews">Reviews</a>
+    </nav>
+    <section class="grid">
+      <div class="panel">
+        <h2>Status</h2>
+        <div id="runtime-box" class="out tiny"></div>
+      </div>
+      <div class="panel">
+        <h2>Workers</h2>
+        <div id="worker-box" class="out tiny"></div>
+      </div>
+      <div class="panel">
+        <h2>Recent Logs</h2>
+        <div id="logs-box" class="out tiny mono"></div>
+      </div>
+    </section>
+  </main>
+  <script>
+    const runtimeBox = document.getElementById("runtime-box");
+    const workerBox = document.getElementById("worker-box");
+    const logsBox = document.getElementById("logs-box");
+    let refreshHandle = null;
+    let refreshSeconds = 5;
+    function scheduleRefresh(seconds) { const next = Math.max(1, Number(seconds) || 5); if (next === refreshSeconds && refreshHandle) return; refreshSeconds = next; if (refreshHandle) clearInterval(refreshHandle); refreshHandle = setInterval(loadRuntime, refreshSeconds * 1000); }
+    async function loadRuntime() {
+      try {
+        const cfgRes = await fetch("/platform/configuration");
+        const cfg = await cfgRes.json();
+        scheduleRefresh(cfg.refresh?.telemetry_refresh_seconds || 5);
+        const res = await fetch("/platform/runtime");
+        const json = await res.json();
+        runtimeBox.innerHTML = `<strong>Sampled at</strong><br>${json.sampled_at || "unknown"}<br><br><strong>Hint</strong><br>${json.hint || "No hint"}<br><br><strong>PID</strong><br>${json.pid ?? "?"}<br><br><strong>Uptime</strong><br>${json.uptime_sec ?? "?"}s<br><br><strong>Memory</strong><br>${json.working_set_gb ?? "?"} GB process · ${json.available_memory_gb ?? "?"} GB free<br><br><strong>CPU</strong><br>${json.cpu_percent ?? "?"}%`;
+        const qw = json.query_worker || {}; const iw = json.index_worker || {};
+        workerBox.innerHTML = `<strong>Query worker</strong><br>${qw.state || "idle"}<br><br><strong>Index worker</strong><br>${iw.state || "idle"}<br><br><strong>Last error</strong><br>${qw.last_error || iw.last_error || "none"}`;
+        logsBox.textContent = (json.recent_logs || []).length ? json.recent_logs.join("\n") : "No recent logs yet.";
+      } catch (error) { runtimeBox.textContent = error.message; }
+    }
+    loadRuntime();
+  </script>
+</body>
+</html>

@@ -13,6 +13,22 @@ class AgentHandle:
     spec: AgentSpec
     agent: Agent
 
+    @property
+    def id(self) -> str:
+        return self.agent_id
+
+    @property
+    def name(self) -> str:
+        return self.spec.name
+
+    @property
+    def ready(self) -> bool:
+        return True
+
+    @property
+    def system(self) -> str | None:
+        return self.spec.system
+
 
 class AgentManager:
     def __init__(self) -> None:
@@ -54,3 +70,7 @@ class AgentManager:
         if not h:
             raise KeyError(agent_id)
         return await h.agent.step(state)
+
+    @property
+    def handles(self) -> Dict[str, AgentHandle]:
+        return self._agents

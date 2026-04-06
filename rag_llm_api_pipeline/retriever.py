@@ -9,7 +9,6 @@ from typing import Dict, Any, List
 from sentence_transformers import SentenceTransformer
 from rag_llm_api_pipeline.loader import load_docs
 from rag_llm_api_pipeline.config_loader import load_config
-from rag_llm_api_pipeline.llm_wrapper import ask_llm
 
 config = load_config()
 INDEX_DIR = config.get("retriever", {}).get("index_dir", "indices")
@@ -191,6 +190,8 @@ def get_answer(system_name: str, question: str):
     """
     Returns (answer, chunks, stats)
     """
+    from rag_llm_api_pipeline.llm_wrapper import ask_llm
+
     t0 = _now()
     chunks, context, chunks_meta, rt = _retrieve_chunks(system_name, question)
     answer, gen_stats = ask_llm(question, context)
