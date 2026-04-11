@@ -89,3 +89,11 @@ It lets operators:
 - submit a document for assessment
 - view recent assessment status
 - open the review dashboard for signoff when needed
+
+## Notebook-first exploration
+
+The repo also includes a ready-to-run Jupyter notebook for operators, solution engineers, and platform integrators:
+
+- `notebooks/krionis_regulatory_wire_walkthrough.ipynb`
+
+It demonstrates the full regulatory wire from pool creation through review approval, which makes it a useful onboarding path for GitHub-first users.

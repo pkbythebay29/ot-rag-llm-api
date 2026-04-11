@@ -146,6 +146,20 @@ Krionis can now assess regulated documents against a regulation corpus that you 
 
 This keeps regulatory analysis additive to the platform instead of introducing a separate, unaudited workflow.
 
+## Notebook walkthrough
+
+For teams that want a faster hands-on entry point, the repo now includes a ready-to-run Jupyter notebook:
+
+- [notebooks/krionis_regulatory_wire_walkthrough.ipynb](/E:/rag_llm_api_pipeline/notebooks/krionis_regulatory_wire_walkthrough.ipynb)
+
+The notebook shows the full regulatory workflow:
+
+- create a regulation-only pool
+- rebuild the pool
+- start the built-in `regulatory` agent
+- submit a compliance assessment
+- approve the result through HITL
+
 ## Docker
 
 The repository now includes a containerized startup path for the integrated API plus orchestrator runtime:
