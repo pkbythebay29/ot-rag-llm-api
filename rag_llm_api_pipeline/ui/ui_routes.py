@@ -60,6 +60,15 @@ def records_page(request: Request):
     )
 
 
+@router.get("/compliance")
+def compliance_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="compliance.html",
+        context={},
+    )
+
+
 @router.get("/reviews")
 def review_dashboard(
     request: Request,

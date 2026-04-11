@@ -106,6 +106,7 @@ Krionis now includes a dedicated docs site scaffold for API consumers and platfo
 - Static docs source: `docs/`
 - Docs configuration: `mkdocs.yml`
 - Operator console: `/`
+- Compliance console: `/ui/compliance`
 - Telemetry page: `/ui/telemetry`
 - Runtime page: `/ui/runtime`
 - Configuration page: `/ui/configuration`
@@ -128,8 +129,22 @@ The integrated platform now exposes one operator-first flow:
 3. Submit a controlled query through the selected agent.
 4. Review flagged outputs in the review dashboard.
 5. Rate outputs as `Good` or `Bad`, with the result stored in local metadata records.
+6. Submit regulated documents through the compliance console to compare them against an indexed regulation corpus.
 
 All of those interactions are also available through the API, so teams can build their own frontend on top of the same contract.
+
+## Compliance assessments
+
+Krionis can now assess regulated documents against a regulation corpus that you index as a normal system.
+
+- Submit inline text or a local document path through `/compliance/assess`
+- Route the generated assessment through the same HITL and audit path as any other controlled response
+- Persist assessment records in local SQLite for later review and traceability
+- Surface the workflow in the built-in compliance page at `/ui/compliance`
+- Create dedicated regulation-only data pools through `/compliance/pools`
+- Rebuild those pools independently and bind them to the built-in `regulatory` agent
+
+This keeps regulatory analysis additive to the platform instead of introducing a separate, unaudited workflow.
 
 ## Docker
 

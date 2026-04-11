@@ -44,6 +44,7 @@ def load_builtin_agents() -> List[str]:
         "rag_orchestrator.agents.builtin.validator",
         "rag_orchestrator.agents.builtin.dialogue",
         "rag_orchestrator.agents.builtin.coordinator",
+        "rag_orchestrator.agents.builtin.regulatory",
     ]
 
     loaded: List[str] = []

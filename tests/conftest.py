@@ -6,7 +6,10 @@ from fastapi.testclient import TestClient
 
 class FakeOrchestrator:
     def run_query(self, system_name: str, question: str) -> dict:
-        if "dosage" in question.lower():
+        normalized = question.lower()
+        if "compliance" in normalized:
+            answer = "Compliance gap detected: validation evidence is missing."
+        elif "dosage" in normalized:
             answer = "Dosage guidance requires human validation before release."
         else:
             answer = "The restart sequence begins by isolating the power source."
@@ -47,11 +50,20 @@ def app_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         "KRIONIS_RESULTS_DB_PATH",
         str(tmp_path / "feedback" / "result_metadata.sqlite3"),
     )
+    monkeypatch.setenv(
+        "KRIONIS_COMPLIANCE_DB_PATH",
+        str(tmp_path / "compliance" / "assessments.sqlite3"),
+    )
+    monkeypatch.setenv(
+        "KRIONIS_REGULATION_POOL_DB_PATH",
+        str(tmp_path / "compliance" / "regulation_pools.sqlite3"),
+    )
     monkeypatch.setenv("KRIONIS_DISABLE_QUERY_WORKER", "1")
 
+    import rag_llm_api_pipeline.core.controlled as controlled
     import rag_llm_api_pipeline.api.server as server
 
-    monkeypatch.setattr(server, "get_orchestrator", lambda: FakeOrchestrator())
+    monkeypatch.setattr(controlled, "get_orchestrator", lambda: FakeOrchestrator())
 
     return {
         "client": TestClient(server.app),

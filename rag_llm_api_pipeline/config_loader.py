@@ -52,6 +52,9 @@ def ensure_runtime_home() -> Path:
             (runtime_home / "data" / "reviews").mkdir(parents=True, exist_ok=True)
             (runtime_home / "data" / "audit").mkdir(parents=True, exist_ok=True)
             (runtime_home / "data" / "feedback").mkdir(parents=True, exist_ok=True)
+            (runtime_home / "data" / "compliance").mkdir(
+                parents=True, exist_ok=True
+            )
             (runtime_home / "indices").mkdir(parents=True, exist_ok=True)
 
             target_config = runtime_home / "config" / "system.yaml"
@@ -118,6 +121,7 @@ def _normalize_runtime_paths(cfg: dict[str, Any], config_path: str) -> dict[str,
     _resolve("feedback", "corrections_path")
     _resolve("feedback", "quality_path")
     _resolve("feedback", "metadata_sqlite_path")
+    _resolve("compliance", "sqlite_path")
 
     assets = cfg.get("assets")
     if isinstance(assets, list):

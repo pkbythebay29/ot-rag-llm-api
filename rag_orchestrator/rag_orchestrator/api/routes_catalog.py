@@ -34,6 +34,11 @@ CATALOG = [
         "name": "Coordinator Agent",
         "description": "Quantization + scheduling.",
     },
+    {
+        "slug": "regulatory",
+        "name": "Regulatory Agent",
+        "description": "Compliance-oriented retrieval over regulation-only corpora.",
+    },
 ]
 
 router = APIRouter()

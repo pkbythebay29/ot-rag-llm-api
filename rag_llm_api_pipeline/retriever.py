@@ -9,13 +9,11 @@ from typing import Dict, Any, List
 from sentence_transformers import SentenceTransformer
 from rag_llm_api_pipeline.loader import load_docs
 from rag_llm_api_pipeline.config_loader import load_config
-
-config = load_config()
-INDEX_DIR = config.get("retriever", {}).get("index_dir", "indices")
-_NORMALIZE = bool(config.get("retriever", {}).get("normalize_embeddings", False))
+from rag_llm_api_pipeline.core.system_assets import find_asset
 
 # Global embedder cache to avoid reloading between calls
 _EMBEDDER = None
+_EMBEDDER_MODEL = None
 
 
 def _now():
@@ -24,16 +22,18 @@ def _now():
 
 def _get_embedder():
     """Lazily initialize and cache the embedding model."""
-    global _EMBEDDER
-    if _EMBEDDER is None:
-        model_name = config["retriever"]["embedding_model"]
+    global _EMBEDDER, _EMBEDDER_MODEL
+    config = load_config() or {}
+    model_name = config["retriever"]["embedding_model"]
+    if _EMBEDDER is None or _EMBEDDER_MODEL != model_name:
         _EMBEDDER = SentenceTransformer(model_name)
+        _EMBEDDER_MODEL = model_name
     return _EMBEDDER
 
 
-def _maybe_normalize(vectors: np.ndarray) -> np.ndarray:
+def _maybe_normalize(vectors: np.ndarray, normalize_embeddings: bool) -> np.ndarray:
     """Optionally normalize embeddings to unit length (cosine-like search)."""
-    if _NORMALIZE:
+    if normalize_embeddings:
         norms = np.linalg.norm(vectors, axis=1, keepdims=True)
         norms[norms == 0] = 1
         vectors = vectors / norms
@@ -44,9 +44,14 @@ def build_index(system_name: str) -> Dict[str, Any]:
     """
     Build FAISS index and return timing report.
     """
-    os.makedirs(INDEX_DIR, exist_ok=True)
+    config = load_config() or {}
+    index_dir = config.get("retriever", {}).get("index_dir", "indices")
+    normalize_embeddings = bool(
+        config.get("retriever", {}).get("normalize_embeddings", False)
+    )
+    os.makedirs(index_dir, exist_ok=True)
 
-    system = next((a for a in config["assets"] if a["name"] == system_name), None)
+    system = find_asset(system_name, config)
     if not system:
         raise ValueError(f"System '{system_name}' not found in assets list.")
 
@@ -95,22 +100,22 @@ def build_index(system_name: str) -> Dict[str, Any]:
         emb = embedder.encode(texts[i : i + batch_size])
         batches.append(emb)
     embeddings = np.vstack(batches)
-    embeddings = _maybe_normalize(embeddings)
+    embeddings = _maybe_normalize(embeddings, normalize_embeddings)
     t_emb1 = _now()
 
     # Build FAISS index
     t_w0 = _now()
     index = faiss.IndexFlatL2(embeddings.shape[1])
     index.add(embeddings)
-    faiss.write_index(index, os.path.join(INDEX_DIR, f"{system_name}.faiss"))
-    with open(os.path.join(INDEX_DIR, f"{system_name}_texts.pkl"), "wb") as handle:
+    faiss.write_index(index, os.path.join(index_dir, f"{system_name}.faiss"))
+    with open(os.path.join(index_dir, f"{system_name}_texts.pkl"), "wb") as handle:
         pickle.dump(texts, handle)
-    with open(os.path.join(INDEX_DIR, f"{system_name}_meta.pkl"), "wb") as handle:
+    with open(os.path.join(index_dir, f"{system_name}_meta.pkl"), "wb") as handle:
         pickle.dump(metas, handle)
     with open(
-        os.path.join(INDEX_DIR, f"{system_name}.normflag"), "w", encoding="utf-8"
+        os.path.join(index_dir, f"{system_name}.normflag"), "w", encoding="utf-8"
     ) as handle:
-        handle.write("1" if _NORMALIZE else "0")
+        handle.write("1" if normalize_embeddings else "0")
     t_w1 = _now()
 
     report = {
@@ -128,12 +133,17 @@ def build_index(system_name: str) -> Dict[str, Any]:
 
 
 def _retrieve_chunks(system_name: str, question: str):
+    config = load_config() or {}
+    index_dir = config.get("retriever", {}).get("index_dir", "indices")
+    normalize_embeddings = bool(
+        config.get("retriever", {}).get("normalize_embeddings", False)
+    )
     embedder = _get_embedder()
 
-    index_path = os.path.join(INDEX_DIR, f"{system_name}.faiss")
-    texts_path = os.path.join(INDEX_DIR, f"{system_name}_texts.pkl")
-    meta_path = os.path.join(INDEX_DIR, f"{system_name}_meta.pkl")
-    normflag_path = os.path.join(INDEX_DIR, f"{system_name}.normflag")
+    index_path = os.path.join(index_dir, f"{system_name}.faiss")
+    texts_path = os.path.join(index_dir, f"{system_name}_texts.pkl")
+    meta_path = os.path.join(index_dir, f"{system_name}_meta.pkl")
+    normflag_path = os.path.join(index_dir, f"{system_name}.normflag")
 
     if not os.path.exists(index_path) or not os.path.exists(texts_path):
         raise RuntimeError(
@@ -152,7 +162,7 @@ def _retrieve_chunks(system_name: str, question: str):
     if os.path.exists(normflag_path):
         with open(normflag_path, encoding="utf-8") as handle:
             stored_flag = handle.read().strip()
-        if stored_flag != ("1" if _NORMALIZE else "0"):
+        if stored_flag != ("1" if normalize_embeddings else "0"):
             print(
                 "[WARN] Normalization setting has changed since index build. Rebuild the index."
             )
@@ -160,7 +170,7 @@ def _retrieve_chunks(system_name: str, question: str):
     # Query embedding
     t_qe0 = _now()
     qv = embedder.encode([question])
-    qv = _maybe_normalize(qv)
+    qv = _maybe_normalize(qv, normalize_embeddings)
     t_qe1 = _now()
 
     # FAISS search
@@ -213,13 +223,15 @@ def list_indexed_data(system_name: str):
     """
     Summarize what's indexed for a given system.
     """
-    texts_path = os.path.join(INDEX_DIR, f"{system_name}_texts.pkl")
-    index_path = os.path.join(INDEX_DIR, f"{system_name}.faiss")
+    config = load_config() or {}
+    index_dir = config.get("retriever", {}).get("index_dir", "indices")
+    texts_path = os.path.join(index_dir, f"{system_name}_texts.pkl")
+    index_path = os.path.join(index_dir, f"{system_name}.faiss")
     if not os.path.exists(texts_path) or not os.path.exists(index_path):
         print(f"[INFO] No index found for '{system_name}'. Run --build-index first.")
         return
     with open(texts_path, "rb") as f:
         texts = pickle.load(f)
     print(f"[INFO] System: {system_name}")
-    print(f"[INFO] Index dir: {INDEX_DIR}")
+    print(f"[INFO] Index dir: {index_dir}")
     print(f"[INFO] Chunks: {len(texts)}")

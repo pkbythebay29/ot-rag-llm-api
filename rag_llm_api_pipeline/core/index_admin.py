@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from rag_llm_api_pipeline.config_loader import load_config
+from rag_llm_api_pipeline.core.system_assets import find_asset, get_assets
 
 
 def _utc_iso(ts: float | None) -> str | None:
@@ -21,9 +22,7 @@ def get_index_dir(config: dict[str, Any] | None = None) -> str:
 
 def get_system_data_dir(system_name: str, config: dict[str, Any] | None = None) -> str:
     cfg = config or load_config() or {}
-    system = next(
-        (a for a in cfg.get("assets", []) if a.get("name") == system_name), None
-    )
+    system = find_asset(system_name, cfg)
     if not system:
         raise ValueError(f"System '{system_name}' not found in assets list.")
     return system.get("docs_dir") or cfg.get("settings", {}).get(
@@ -32,9 +31,7 @@ def get_system_data_dir(system_name: str, config: dict[str, Any] | None = None) 
 
 
 def _list_source_files(system_name: str, config: dict[str, Any]) -> list[str]:
-    system = next(
-        (a for a in config.get("assets", []) if a.get("name") == system_name), None
-    )
+    system = find_asset(system_name, config)
     if not system:
         raise ValueError(f"System '{system_name}' not found in assets list.")
 
@@ -101,7 +98,7 @@ def get_index_status(
 def list_index_statuses(config: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     cfg = config or load_config() or {}
     statuses = []
-    for asset in cfg.get("assets", []):
+    for asset in get_assets(cfg):
         name = asset.get("name")
         if name:
             statuses.append(get_index_status(name, cfg))

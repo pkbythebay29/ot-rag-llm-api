@@ -29,6 +29,7 @@ markdown_extensions:
 nav:
   - Overview: index.md
   - Operator Console: operator-console.md
+  - Compliance Assessment: compliance-assessment.md
   - Quickstart: quickstart.md
   - Query Lifecycle: query-lifecycle.md
   - Authentication: authentication.md

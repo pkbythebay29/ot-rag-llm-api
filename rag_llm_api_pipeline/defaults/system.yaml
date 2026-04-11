@@ -104,6 +104,14 @@ feedback:
   quality_path: data/feedback/quality_ratings.jsonl
   metadata_sqlite_path: data/feedback/result_metadata.sqlite3
 
+compliance:
+  default_regulation_system: TestSystem
+  document_excerpt_chars: 4000
+  audit_excerpt_chars: 1200
+  sqlite_path: data/compliance/assessments.sqlite3
+  pool_sqlite_path: data/compliance/regulation_pools.sqlite3
+  regulation_pools: []
+
 ui:
   telemetry_refresh_seconds: 5
 

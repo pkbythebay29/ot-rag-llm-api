@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Krionis Compliance</title>
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --panel: rgba(255, 255, 255, 0.84);
+      --panel-strong: rgba(255, 255, 255, 0.94);
+      --ink: #111111;
+      --muted: #6e6e73;
+      --line: rgba(17, 17, 17, 0.08);
+      --line-strong: rgba(17, 17, 17, 0.14);
+      --fill: #111111;
+      --fill-soft: rgba(17, 17, 17, 0.06);
+      --shadow: 0 24px 60px rgba(15, 15, 15, 0.08);
+      --radius-xl: 28px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(0, 0, 0, 0.05), transparent 28%),
+        linear-gradient(180deg, #fbfbfc 0%, var(--bg) 100%);
+    }
+
+    .shell {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 28px 20px 40px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      backdrop-filter: blur(20px);
+      box-shadow: var(--shadow);
+    }
+
+    .hero, .main, .sidebar .panel { padding: 28px; }
+    .hero { margin-bottom: 20px; background: var(--panel-strong); }
+    .nav, .controls { display: flex; flex-wrap: wrap; gap: 10px; }
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(340px, 0.95fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    h1, h2, h3 { margin: 0; letter-spacing: -0.03em; line-height: 1.2; }
+    h1 { font-size: 2.35rem; font-weight: 650; letter-spacing: -0.04em; }
+    h2 { font-size: 1.55rem; font-weight: 620; }
+    h3 { font-size: 1rem; font-weight: 620; }
+    p { margin: 0; color: var(--muted); line-height: 1.55; }
+    .sub { margin-top: 8px; }
+    .label {
+      display: block;
+      margin: 18px 0 8px;
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+
+    input, textarea {
+      width: 100%;
+      border: 1px solid var(--line-strong);
+      border-radius: 18px;
+      padding: 14px 16px;
+      font: inherit;
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--ink);
+      outline: none;
+    }
+
+    textarea {
+      min-height: 210px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+
+    .section-spacer {
+      height: 1px;
+      background: var(--line);
+      margin: 26px 0;
+    }
+
+    button, .linkbtn {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .primary { background: var(--fill); color: #fff; }
+    .secondary { background: var(--fill-soft); color: var(--ink); }
+    .page-link.active { background: var(--fill); color: #fff; }
+
+    .main { min-height: 760px; }
+    .sidebar { display: grid; gap: 16px; }
+    .out, .list-item {
+      margin-top: 18px;
+      padding: 16px 18px;
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.88);
+      white-space: pre-wrap;
+      line-height: 1.55;
+    }
+
+    .list { display: grid; gap: 12px; margin-top: 14px; }
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.88rem;
+    }
+
+    .tiny { font-size: 0.82rem; color: var(--muted); line-height: 1.45; }
+    .kv { display: grid; gap: 12px; margin-top: 14px; }
+    .kv-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+    }
+
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="panel hero">
+      <h1>Compliance Assessment</h1>
+      <p class="sub">Submit a regulated document, compare it against the indexed regulation corpus, and keep the result inside the standard Krionis HITL and audit chain.</p>
+    </section>
+
+    <nav class="nav">
+      <a class="linkbtn secondary page-link" href="/">Operator</a>
+      <a class="linkbtn secondary page-link active" href="/ui/compliance">Compliance</a>
+      <a class="linkbtn secondary page-link" href="/ui/telemetry">Telemetry</a>
+      <a class="linkbtn secondary page-link" href="/ui/runtime">Runtime</a>
+      <a class="linkbtn secondary page-link" href="/ui/configuration">Configuration</a>
+      <a class="linkbtn secondary page-link" href="/ui/records">Records</a>
+      <a class="linkbtn secondary page-link" href="/ui/reviews">Reviews</a>
+    </nav>
+
+    <section class="grid">
+      <section class="panel main">
+        <h2>Regulatory Wire</h2>
+        <p class="sub">Create a regulation-only data pool, rebuild its index, and start the built-in regulatory agent. Each pool becomes a dedicated compliance system.</p>
+
+        <label class="label" for="pool-name">Pool Name</label>
+        <input id="pool-name" value="RegulatoryPool" />
+
+        <label class="label" for="pool-dir">Pool Document Directory</label>
+        <input id="pool-dir" value="data/manuals/regulations" />
+
+        <label class="label" for="pool-framework">Pool Framework</label>
+        <input id="pool-framework" placeholder="EU GMP Annex 11, FDA guidance, MHRA GDP..." />
+
+        <label class="label" for="pool-focus">Pool Focus</label>
+        <input id="pool-focus" placeholder="Validation, data integrity, change control..." />
+
+        <div class="controls" style="margin-top:16px;">
+          <button id="save-pool" class="secondary">Save Pool</button>
+          <button id="rebuild-pool" class="secondary">Rebuild Pool</button>
+          <button id="start-regulatory-agent" class="secondary">Start Regulatory Agent</button>
+        </div>
+
+        <div id="pool-output" class="out">No regulatory pool selected yet.</div>
+        <div id="pool-trace" class="out mono" style="display:none;"></div>
+
+        <div class="section-spacer"></div>
+
+        <h2>Assess One Document</h2>
+        <p class="sub">Use inline text for fast checks, or reference a local file path that Krionis can read from the runtime document area.</p>
+
+        <label class="label" for="document-name">Document Name</label>
+        <input id="document-name" value="Validation SOP Draft" />
+
+        <label class="label" for="regulation-system">Regulation System</label>
+        <input id="regulation-system" value="TestSystem" />
+
+        <label class="label" for="framework">Framework</label>
+        <input id="framework" placeholder="EU GMP Annex 11, 21 CFR Part 11, GDP, internal QA standard..." />
+
+        <label class="label" for="focus">Focus</label>
+        <input id="focus" placeholder="Validation, change control, data integrity, deviation handling..." />
+
+        <label class="label" for="document-path">Document Path</label>
+        <input id="document-path" placeholder="Optional. Relative paths resolve from settings.data_dir." />
+
+        <label class="label" for="document-text">Document Text</label>
+        <textarea id="document-text" placeholder="Paste the regulated document text here when you do not want to use a file path."></textarea>
+
+        <div class="controls" style="margin-top:16px;">
+          <button id="submit-assessment" class="primary">Run Compliance Check</button>
+          <a class="linkbtn secondary" href="/ui/reviews" target="_blank" rel="noreferrer">Review Dashboard</a>
+          <a class="linkbtn secondary" href="/api/docs" target="_blank" rel="noreferrer">API</a>
+        </div>
+
+        <div id="assessment-output" class="out">No compliance assessment has been submitted yet.</div>
+        <div id="assessment-trace" class="out mono" style="display:none;"></div>
+      </section>
+
+      <aside class="sidebar">
+        <section class="panel">
+          <h3>Regulatory Pools</h3>
+          <div id="pool-list" class="list tiny"></div>
+        </section>
+
+        <section class="panel">
+          <h3>Stored Assessments</h3>
+          <div class="kv">
+            <div class="kv-row"><span>Total</span><strong id="summary-total">0</strong></div>
+            <div class="kv-row"><span>Pending review</span><strong id="summary-pending">0</strong></div>
+            <div class="kv-row"><span>Approved</span><strong id="summary-approved">0</strong></div>
+            <div class="kv-row"><span>Rejected</span><strong id="summary-rejected">0</strong></div>
+          </div>
+          <div id="database-path" class="tiny" style="margin-top:14px;"></div>
+        </section>
+
+        <section class="panel">
+          <h3>Recent Assessments</h3>
+          <div id="assessment-list" class="list tiny"></div>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const documentName = document.getElementById("document-name");
+    const regulationSystem = document.getElementById("regulation-system");
+    const framework = document.getElementById("framework");
+    const focus = document.getElementById("focus");
+    const documentPath = document.getElementById("document-path");
+    const documentText = document.getElementById("document-text");
+    const submitAssessment = document.getElementById("submit-assessment");
+    const poolName = document.getElementById("pool-name");
+    const poolDir = document.getElementById("pool-dir");
+    const poolFramework = document.getElementById("pool-framework");
+    const poolFocus = document.getElementById("pool-focus");
+    const savePoolButton = document.getElementById("save-pool");
+    const rebuildPoolButton = document.getElementById("rebuild-pool");
+    const startRegulatoryAgentButton = document.getElementById("start-regulatory-agent");
+    const poolOutput = document.getElementById("pool-output");
+    const poolTrace = document.getElementById("pool-trace");
+    const poolList = document.getElementById("pool-list");
+    const assessmentOutput = document.getElementById("assessment-output");
+    const assessmentTrace = document.getElementById("assessment-trace");
+    const assessmentList = document.getElementById("assessment-list");
+    const databasePath = document.getElementById("database-path");
+    const summaryTotal = document.getElementById("summary-total");
+    const summaryPending = document.getElementById("summary-pending");
+    const summaryApproved = document.getElementById("summary-approved");
+    const summaryRejected = document.getElementById("summary-rejected");
+
+    function usePool(name, frameworkValue, focusValue) {
+      regulationSystem.value = name || "";
+      if (frameworkValue && !framework.value.trim()) {
+        framework.value = frameworkValue;
+      }
+      if (focusValue && !focus.value.trim()) {
+        focus.value = focusValue;
+      }
+      poolName.value = name || poolName.value;
+    }
+
+    async function loadPools() {
+      const res = await fetch("/compliance/pools");
+      const json = await res.json();
+      const items = json.items || [];
+      if (!items.length) {
+        poolList.innerHTML = `<div class="list-item"><strong>No regulatory pools yet.</strong><br>Create one to build a regulation-only corpus.</div>`;
+        return;
+      }
+
+      poolList.innerHTML = items.map((item) => `
+        <div class="list-item">
+          <div><strong>${item.name}</strong><br>${item.framework || "No framework"} · ${item.focus || "General"} · agent ${item.agent_type}</div>
+          <div style="margin-top:10px;">Directory: ${item.docs_dir || "n/a"}</div>
+          <div>Index: ${item.index_status?.index_exists ? "ready" : "missing"}</div>
+          <div class="controls" style="margin-top:12px;">
+            <button class="secondary" onclick='usePool(${JSON.stringify(item.name)}, ${JSON.stringify(item.framework || "")}, ${JSON.stringify(item.focus || "")})'>Use</button>
+            <button class="secondary" onclick='rebuildRegulatoryPool(${JSON.stringify(item.name)})'>Rebuild</button>
+            <button class="secondary" onclick='startRegulatoryAgent(${JSON.stringify(item.name)})'>Start Agent</button>
+          </div>
+        </div>
+      `).join("");
+
+      if (!regulationSystem.value.trim() && items[0]?.name) {
+        usePool(items[0].name, items[0].framework, items[0].focus);
+      }
+    }
+
+    async function savePool() {
+      savePoolButton.disabled = true;
+      poolOutput.textContent = "Saving regulatory pool...";
+      poolTrace.style.display = "none";
+      try {
+        const res = await fetch("/compliance/pools", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: poolName.value.trim() || "RegulatoryPool",
+            docs_dir: poolDir.value.trim() || "data/manuals/regulations",
+            framework: poolFramework.value.trim() || null,
+            focus: poolFocus.value.trim() || null
+          })
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json.detail || "Failed to save regulatory pool.");
+        }
+        regulationSystem.value = json.name || regulationSystem.value;
+        poolOutput.textContent = `Saved pool ${json.name}. Add regulatory documents to ${json.docs_dir}.`;
+        poolTrace.style.display = "block";
+        poolTrace.textContent = `pool=${json.name}\nagent_type=${json.agent_type}\ndocs_dir=${json.docs_dir}\nindex_ready=${json.index_status?.index_exists ? "true" : "false"}`;
+        await loadPools();
+      } catch (error) {
+        poolOutput.textContent = error.message;
+      } finally {
+        savePoolButton.disabled = false;
+      }
+    }
+
+    async function rebuildRegulatoryPool(name) {
+      const pool = name || poolName.value.trim();
+      if (!pool) {
+        return;
+      }
+      poolOutput.textContent = `Rebuilding pool ${pool}...`;
+      try {
+        const res = await fetch(`/compliance/pools/${encodeURIComponent(pool)}/rebuild`, { method: "POST" });
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json.detail || "Failed to rebuild regulatory pool.");
+        }
+        poolTrace.style.display = "block";
+        poolTrace.textContent = `pool=${pool}\nchunks=${json.report?.num_chunks ?? "unknown"}\nstatus=${json.status}`;
+        poolOutput.textContent = `Rebuilt pool ${pool}.`;
+        await loadPools();
+      } catch (error) {
+        poolOutput.textContent = error.message;
+      }
+    }
+
+    async function startRegulatoryAgent(name) {
+      const pool = name || poolName.value.trim();
+      if (!pool) {
+        return;
+      }
+      poolOutput.textContent = `Starting regulatory agent for ${pool}...`;
+      try {
+        const res = await fetch(`/compliance/pools/${encodeURIComponent(pool)}/start-agent`, { method: "POST" });
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json.detail || "Failed to start regulatory agent.");
+        }
+        poolTrace.style.display = "block";
+        poolTrace.textContent = `task_id=${json.task_id}\nagent_type=${json.agent_type}\nsystem=${json.system}\nready=${json.ready ? "true" : "false"}`;
+        poolOutput.textContent = `Started regulatory agent ${json.task_id}.`;
+        usePool(json.system, poolFramework.value.trim(), poolFocus.value.trim());
+      } catch (error) {
+        poolOutput.textContent = error.message;
+      }
+    }
+
+    async function loadAssessments() {
+      const res = await fetch("/compliance/assessments");
+      const json = await res.json();
+      summaryTotal.textContent = String(json.summary?.total ?? 0);
+      summaryPending.textContent = String(json.summary?.pending_review ?? 0);
+      summaryApproved.textContent = String(json.summary?.approved ?? 0);
+      summaryRejected.textContent = String(json.summary?.rejected ?? 0);
+      databasePath.textContent = `Store: ${json.database_path || "unknown"}`;
+
+      const items = json.items || [];
+      if (!items.length) {
+        assessmentList.innerHTML = `<div class="list-item"><strong>No assessments yet.</strong><br>Run a compliance check to create the first stored assessment.</div>`;
+        return;
+      }
+
+      assessmentList.innerHTML = items.map((item) => `
+        <div class="list-item">
+          <div><strong>${item.document_name}</strong><br>${item.status} · ${item.assessment_status || "unknown"}</div>
+          <div style="margin-top:10px;">System: ${item.regulation_system || item.system_id || "n/a"}</div>
+          <div>Trace: ${item.trace_id || "n/a"}</div>
+          <div>Review: ${item.review_id || "n/a"}</div>
+          <div>${item.timestamps?.created_at || ""}</div>
+        </div>
+      `).join("");
+    }
+
+    async function runAssessment() {
+      submitAssessment.disabled = true;
+      assessmentOutput.textContent = "Running compliance assessment...";
+      assessmentTrace.style.display = "none";
+      try {
+        const res = await fetch("/compliance/assess", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            document_name: documentName.value.trim() || "Untitled regulated document",
+            regulation_system: regulationSystem.value.trim() || "TestSystem",
+            framework: framework.value.trim() || null,
+            focus: focus.value.trim() || null,
+            document_path: documentPath.value.trim() || null,
+            document_text: documentText.value.trim() || null
+          })
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json.detail || "Compliance assessment failed.");
+        }
+        assessmentOutput.textContent = json.status === "pending_review"
+          ? `Review required.\n\n${json.response_preview || "Preview unavailable."}\n\nOpen the review dashboard to approve or reject the assessment.`
+          : (json.answer || "No assessment text returned.");
+        assessmentTrace.style.display = "block";
+        assessmentTrace.textContent = `assessment_id=${json.assessment_id || "n/a"}\nstatus=${json.status || "unknown"}\ntrace_id=${json.trace_id || "n/a"}\nreview_id=${json.review_id || "n/a"}\nregulation_system=${json.regulation_system || "n/a"}`;
+        await loadAssessments();
+        await loadPools();
+      } catch (error) {
+        assessmentOutput.textContent = error.message;
+      } finally {
+        submitAssessment.disabled = false;
+      }
+    }
+
+    savePoolButton.addEventListener("click", savePool);
+    rebuildPoolButton.addEventListener("click", () => rebuildRegulatoryPool(null));
+    startRegulatoryAgentButton.addEventListener("click", () => startRegulatoryAgent(null));
+    submitAssessment.addEventListener("click", runAssessment);
+    window.usePool = usePool;
+    window.rebuildRegulatoryPool = rebuildRegulatoryPool;
+    window.startRegulatoryAgent = startRegulatoryAgent;
+    loadPools();
+    loadAssessments();
+  </script>
+</body>
+</html>

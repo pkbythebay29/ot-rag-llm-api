@@ -15,6 +15,7 @@ Krionis is a human-in-the-loop controlled RAG platform for traceable, reviewable
 - ReDoc reference: `/api/reference`
 - OpenAPI schema: `/api/openapi.json`
 - Operator query UI: `/`
+- Compliance UI: `/ui/compliance`
 - Telemetry UI: `/ui/telemetry`
 - Runtime UI: `/ui/runtime`
 - Configuration UI: `/ui/configuration`
@@ -26,6 +27,7 @@ Krionis is a human-in-the-loop controlled RAG platform for traceable, reviewable
 The built-in console is now split into focused pages:
 
 - Operator: start agents, rebuild the retrieval cache, submit controlled queries, route through a selected agent, and rate responses.
+- Compliance: assess regulated documents against an indexed regulation corpus, then move flagged results into the normal review flow.
 - Telemetry: inspect agent inventory, queue telemetry, and recent routed query events.
 - Runtime: inspect the main process, worker state, and recent logs.
 - Configuration: inspect the active YAML configuration, resolved runtime choices, and local storage paths.

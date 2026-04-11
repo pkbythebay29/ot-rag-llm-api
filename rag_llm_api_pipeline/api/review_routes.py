@@ -6,9 +6,10 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel
 
 from rag_llm_api_pipeline.core import audit, feedback
+from rag_llm_api_pipeline.core.compliance import infer_assessment_status
 from rag_llm_api_pipeline.core.hitl import utc_now_iso
 from rag_llm_api_pipeline.core.security import get_user_id, validate_api_key_header
-from rag_llm_api_pipeline.db import review_store
+from rag_llm_api_pipeline.db import compliance_store, review_store
 
 router = APIRouter(prefix="/review", tags=["Review"])
 
@@ -38,6 +39,40 @@ def _ensure_pending(item: dict[str, Any]) -> None:
             status_code=status.HTTP_409_CONFLICT,
             detail="Review item is no longer pending.",
         )
+
+
+def _sync_compliance_assessment(item: dict[str, Any]) -> None:
+    assessment_id = item.get("assessment_id")
+    if not assessment_id:
+        return
+
+    assessment = compliance_store.get_assessment(str(assessment_id))
+    if not assessment:
+        return
+
+    assessment["status"] = item.get("status", assessment.get("status"))
+    assessment["review_id"] = item.get("id", assessment.get("review_id"))
+    assessment["generated_response"] = item.get("final_response") or item.get(
+        "response", assessment.get("generated_response")
+    )
+    assessment["response_preview"] = item.get(
+        "response_preview", assessment.get("response_preview")
+    )
+    assessment["reviewer_notes"] = item.get("reviewer_notes")
+    assessment["reviewer_id"] = item.get("reviewer_id")
+    assessment["assessment_status"] = infer_assessment_status(
+        str(
+            assessment.get("generated_response")
+            or assessment.get("response_preview")
+            or ""
+        )
+    )
+    assessment.setdefault("timestamps", {})
+    assessment["timestamps"]["updated_at"] = utc_now_iso()
+    assessment["timestamps"]["reviewed_at"] = item.get("timestamps", {}).get(
+        "reviewed_at"
+    )
+    compliance_store.update_assessment(str(assessment_id), assessment)
 
 
 @router.get("/pending")
@@ -88,6 +123,7 @@ def approve_review(
         execution_trace=execution_trace,
     )
     feedback.record_review_feedback(updated_item)
+    _sync_compliance_assessment(updated_item)
     return updated_item
 
 
@@ -132,4 +168,5 @@ def reject_review(
         execution_trace=execution_trace,
     )
     feedback.record_review_feedback(updated_item)
+    _sync_compliance_assessment(updated_item)
     return updated_item

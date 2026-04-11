@@ -77,27 +77,29 @@ def log_query_event(
     review_id: str | None,
     execution_trace: dict[str, Any],
     sources: list[str] | None = None,
+    extra_fields: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    return append_audit_record(
-        {
-            "event_type": "query",
-            "trace_id": trace_id,
-            "system_id": system_id,
-            "query": query,
-            "retrieved_documents": retrieved_documents,
-            "retrieved_chunks": sources or [],
-            "generated_response": generated_response,
-            "final_approved_response": final_response,
-            "reviewer_decision": reviewer_decision,
-            "review_id": review_id,
-            "user_id": user_id,
-            "reviewer_id": None,
-            "status": status,
-            "model_version": model_version,
-            "prompt_version": prompt_version,
-            "execution_trace": execution_trace,
-        }
-    )
+    payload = {
+        "event_type": "query",
+        "trace_id": trace_id,
+        "system_id": system_id,
+        "query": query,
+        "retrieved_documents": retrieved_documents,
+        "retrieved_chunks": sources or [],
+        "generated_response": generated_response,
+        "final_approved_response": final_response,
+        "reviewer_decision": reviewer_decision,
+        "review_id": review_id,
+        "user_id": user_id,
+        "reviewer_id": None,
+        "status": status,
+        "model_version": model_version,
+        "prompt_version": prompt_version,
+        "execution_trace": execution_trace,
+    }
+    if extra_fields:
+        payload.update(extra_fields)
+    return append_audit_record(payload)
 
 
 def log_review_event(

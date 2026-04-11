@@ -29,9 +29,15 @@ from rag_llm_api_pipeline.core.index_worker import (
 from rag_llm_api_pipeline.core.platform_state import list_recent_routes
 from rag_llm_api_pipeline.core.query_worker import get_query_worker_status
 from rag_llm_api_pipeline.core.security import validate_api_key_header
+from rag_llm_api_pipeline.core.system_assets import list_regulation_pools
 from rag_llm_api_pipeline.core.system_metadata import get_system_metadata
 from rag_llm_api_pipeline.config_loader import load_config
-from rag_llm_api_pipeline.db import metadata_store, review_store
+from rag_llm_api_pipeline.db import (
+    compliance_store,
+    metadata_store,
+    regulation_pool_store,
+    review_store,
+)
 
 router = APIRouter(tags=["Platform"])
 SERVER_STARTED_AT = time.time()
@@ -256,11 +262,14 @@ def _configuration_summary(config: dict[str, Any]) -> dict[str, Any]:
             ),
             "review_store": os.path.abspath(review_store.get_db_path()),
             "metadata_store": os.path.abspath(metadata_store.get_db_path()),
+            "compliance_store": os.path.abspath(compliance_store.get_db_path()),
+            "regulation_pool_store": os.path.abspath(regulation_pool_store.get_db_path()),
             "audit_log": os.path.abspath(
                 config.get("audit", {}).get("log_path", "data/audit/audit_log.jsonl")
             ),
         },
         "hitl": config.get("hitl", {}),
+        "compliance": config.get("compliance", {}),
     }
 
 
@@ -317,6 +326,8 @@ def get_dashboard_status() -> dict[str, Any]:
         "configuration": configuration,
         "refresh": configuration["refresh"],
         "pending_reviews": len(review_store.get_pending_reviews()),
+        "compliance": compliance_store.get_summary(),
+        "regulation_pools": list_regulation_pools(config),
         "indexes": index_statuses,
         "recent_routes": list_recent_routes(),
         "orchestrator": {
@@ -520,6 +531,7 @@ def get_result_records(limit: int = 50) -> dict[str, Any]:
         "summary": metadata_store.get_summary(),
         "items": metadata_store.list_records(limit=limit),
         "database_path": os.path.abspath(metadata_store.get_db_path()),
+        "compliance_summary": compliance_store.get_summary(),
     }
 
 

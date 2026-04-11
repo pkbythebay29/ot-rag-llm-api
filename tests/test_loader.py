@@ -1,4 +1,4 @@
-from rag_llm_api_pipeline.db import metadata_store, review_store
+from rag_llm_api_pipeline.db import compliance_store, metadata_store, review_store
 
 
 def _submit_flagged_query(client):
@@ -114,6 +114,7 @@ def test_root_ui_explains_hitl_and_audit(app_client):
     assert "Start Agent" in response.text
     assert "Rebuild Cache" in response.text
     assert "Good" in response.text
+    assert "/ui/compliance" in response.text
     assert "/ui/telemetry" in response.text
     assert "/ui/runtime" in response.text
     assert "/ui/configuration" in response.text
@@ -205,6 +206,7 @@ def test_orchestrator_routes_are_exposed(app_client):
     catalog = client.get("/orchestrator/catalog")
     assert catalog.status_code == 200
     assert any(agent["slug"] == "retriever" for agent in catalog.json()["agents"])
+    assert any(agent["slug"] == "regulatory" for agent in catalog.json()["agents"])
 
     diagnostics = client.get("/orchestrator/diag/agents")
     assert diagnostics.status_code == 200
@@ -257,6 +259,7 @@ def test_index_rebuild_endpoint_returns_stubbed_report(app_client, monkeypatch):
 def test_observability_pages_load(app_client):
     client = app_client["client"]
 
+    assert client.get("/ui/compliance").status_code == 200
     assert client.get("/ui/telemetry").status_code == 200
     assert client.get("/ui/runtime").status_code == 200
     assert client.get("/ui/configuration").status_code == 200
@@ -282,3 +285,140 @@ def test_platform_records_endpoint_returns_summary(app_client):
     assert records.status_code == 200
     assert records.json()["summary"]["quality_bad"] >= 1
     assert records.json()["database_path"]
+
+
+def test_compliance_assessment_enters_review_and_is_stored(app_client):
+    client = app_client["client"]
+
+    response = client.post(
+        "/compliance/assess",
+        json={
+            "document_name": "Validation SOP Draft",
+            "document_text": "The procedure describes execution steps but does not include validation evidence or approval signatures.",
+            "regulation_system": "TestSystem",
+            "framework": "EU GMP Annex 11",
+            "focus": "Validation",
+        },
+        headers={"x-user-id": "qa-author-1"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "pending_review"
+    assert body["assessment_id"]
+    assert body["review_id"]
+    assert body["regulation_system"] == "TestSystem"
+
+    stored = compliance_store.get_assessment(body["assessment_id"])
+    assert stored is not None
+    assert stored["status"] == "pending_review"
+    assert stored["document_name"] == "Validation SOP Draft"
+    assert stored["review_id"] == body["review_id"]
+
+
+def test_compliance_assessment_updates_after_review(app_client):
+    client = app_client["client"]
+
+    created = client.post(
+        "/compliance/assess",
+        json={
+            "document_name": "Batch Record Draft",
+            "document_text": "The batch record is missing validation evidence and compliance traceability.",
+            "regulation_system": "TestSystem",
+            "framework": "21 CFR Part 11",
+            "focus": "Validation",
+        },
+        headers={"x-user-id": "qa-author-2"},
+    ).json()
+
+    approved = client.post(
+        f"/review/{created['review_id']}/approve",
+        json={
+            "final_response": "Approved compliance assessment after QA review.",
+            "reviewer_notes": "Validated against current procedural controls.",
+        },
+        headers={"x-api-key": "test-review-key", "x-reviewer-id": "qa-lead-1"},
+    )
+
+    assert approved.status_code == 200
+    stored = compliance_store.get_assessment(created["assessment_id"])
+    assert stored is not None
+    assert stored["status"] == "approved"
+    assert (
+        stored["generated_response"]
+        == "Approved compliance assessment after QA review."
+    )
+    assert stored["reviewer_notes"] == "Validated against current procedural controls."
+
+
+def test_compliance_routes_and_page_return_recent_assessments(app_client):
+    client = app_client["client"]
+
+    created = client.post(
+        "/compliance/assess",
+        json={
+            "document_name": "Deviation Form Draft",
+            "document_text": "The deviation form references compliance but omits validation signoff.",
+        },
+    ).json()
+
+    listing = client.get("/compliance/assessments")
+    assert listing.status_code == 200
+    assert listing.json()["summary"]["total"] >= 1
+    assert any(
+        item["id"] == created["assessment_id"] for item in listing.json()["items"]
+    )
+
+    lookup = client.get(f"/compliance/assessments/{created['assessment_id']}")
+    assert lookup.status_code == 200
+    assert lookup.json()["document_name"] == "Deviation Form Draft"
+
+    page = client.get("/ui/compliance")
+    assert page.status_code == 200
+    assert "Compliance Assessment" in page.text
+    assert "Run Compliance Check" in page.text
+    assert "Regulatory Wire" in page.text
+
+
+def test_regulation_pool_routes_support_dedicated_pool_and_agent(
+    app_client, monkeypatch
+):
+    client = app_client["client"]
+
+    created = client.post(
+        "/compliance/pools",
+        json={
+            "name": "EURegulations",
+            "docs_dir": "data/manuals/regulations",
+            "framework": "EU GMP",
+            "focus": "Validation",
+        },
+    )
+    assert created.status_code == 200
+    assert created.json()["name"] == "EURegulations"
+    assert created.json()["agent_type"] == "regulatory"
+
+    listing = client.get("/compliance/pools")
+    assert listing.status_code == 200
+    assert any(item["name"] == "EURegulations" for item in listing.json()["items"])
+
+    lookup = client.get("/compliance/pools/EURegulations")
+    assert lookup.status_code == 200
+    assert lookup.json()["framework"] == "EU GMP"
+
+    from rag_llm_api_pipeline.api import compliance_routes
+
+    monkeypatch.setattr(
+        compliance_routes,
+        "rebuild_index_in_worker",
+        lambda pool_name: {"num_chunks": 4, "system": pool_name},
+    )
+
+    rebuilt = client.post("/compliance/pools/EURegulations/rebuild")
+    assert rebuilt.status_code == 200
+    assert rebuilt.json()["report"]["num_chunks"] == 4
+
+    started = client.post("/compliance/pools/EURegulations/start-agent")
+    assert started.status_code == 200
+    assert started.json()["agent_type"] == "regulatory"
+    assert started.json()["system"] == "EURegulations"
