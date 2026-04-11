@@ -6,15 +6,32 @@
   <title>Krionis Configuration</title>
   <style>
     :root { --bg:#f5f5f7; --panel:rgba(255,255,255,.9); --ink:#111; --muted:#6e6e73; --line:rgba(17,17,17,.1); --fill:#111; --fill-soft:rgba(17,17,17,.06); --shadow:0 24px 60px rgba(15,15,15,.08); --radius-xl:28px; }
-    * { box-sizing:border-box; } body { margin:0; min-height:100vh; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue",Arial,sans-serif; background:linear-gradient(180deg,#fbfbfc 0%,var(--bg) 100%); color:var(--ink); }
-    .shell { max-width:1320px; margin:0 auto; padding:28px 20px 40px; } .panel { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius-xl); box-shadow:var(--shadow); padding:24px; } .hero { margin-bottom:18px; } .nav, .grid { display:grid; gap:16px; } .nav { grid-template-columns:repeat(auto-fit,minmax(120px,max-content)); margin-bottom:18px; } .grid { grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); } .linkbtn,.out,.item { border-radius:20px; border:1px solid var(--line); background:rgba(255,255,255,.88); padding:14px 16px; } .linkbtn { text-decoration:none; color:var(--ink); background:var(--fill-soft); font-weight:600; display:inline-flex; justify-content:center; } .linkbtn.active { background:var(--fill); color:#fff; } p { color:var(--muted); line-height:1.6; } .tiny { color:var(--muted); font-size:.86rem; line-height:1.55; } .mono { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue",Arial,sans-serif; background:linear-gradient(180deg,#fbfbfc 0%,var(--bg) 100%); color:var(--ink); }
+    .shell { max-width:1320px; margin:0 auto; padding:28px 20px 40px; }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius-xl); box-shadow:var(--shadow); padding:24px; }
+    .hero { margin-bottom:18px; }
+    .nav, .grid, .profiles { display:grid; gap:16px; }
+    .nav { grid-template-columns:repeat(auto-fit,minmax(120px,max-content)); margin-bottom:18px; }
+    .grid { grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); }
+    .profiles { grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); margin-top:16px; }
+    .linkbtn,.out,.item,.profile { border-radius:20px; border:1px solid var(--line); background:rgba(255,255,255,.88); padding:14px 16px; }
+    .linkbtn,button { text-decoration:none; color:var(--ink); background:var(--fill-soft); font-weight:600; display:inline-flex; justify-content:center; align-items:center; border:1px solid var(--line); border-radius:999px; padding:12px 16px; cursor:pointer; }
+    .linkbtn.active, button.primary { background:var(--fill); color:#fff; }
+    button { font:inherit; }
+    p { color:var(--muted); line-height:1.6; }
+    .tiny { color:var(--muted); font-size:.86rem; line-height:1.55; }
+    .mono { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+    .row { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+    select { min-width:260px; border:1px solid var(--line); border-radius:16px; padding:12px 14px; font:inherit; background:#fff; }
+    .profile.active { border-color:rgba(17,17,17,.24); box-shadow:inset 0 0 0 1px rgba(17,17,17,.06); }
   </style>
 </head>
 <body>
   <main class="shell">
     <section class="panel hero">
       <h1>Configuration</h1>
-      <p>Resolved model runtime, HITL thresholds, local storage paths, and refresh settings loaded from YAML.</p>
+      <p>Resolved model runtime, switchable model profiles, HITL thresholds, local storage paths, and refresh settings loaded from YAML.</p>
     </section>
     <nav class="nav">
       <a class="linkbtn" href="/">Operator</a>
@@ -25,6 +42,17 @@
       <a class="linkbtn" href="/ui/reviews">Reviews</a>
     </nav>
     <section class="grid">
+      <div class="panel">
+        <h2>Model Switching</h2>
+        <p class="tiny">Choose a named profile and Krionis will write it into YAML and reset only the isolated query worker. The next query loads the new model.</p>
+        <div class="row" style="margin-top:16px;">
+          <select id="profile-select"></select>
+          <button id="apply-profile" class="primary">Apply Profile</button>
+          <button id="reload-model">Reload Worker</button>
+        </div>
+        <div id="model-message" class="out tiny" style="margin-top:16px;">Loading model profiles...</div>
+        <div id="profiles-box" class="profiles"></div>
+      </div>
       <div class="panel"><h2>Runtime Config</h2><div id="models-box" class="out tiny"></div></div>
       <div class="panel"><h2>Paths</h2><div id="paths-box" class="out tiny mono"></div></div>
       <div class="panel"><h2>HITL</h2><div id="hitl-box" class="out tiny"></div></div>
@@ -36,19 +64,79 @@
     const pathsBox = document.getElementById("paths-box");
     const hitlBox = document.getElementById("hitl-box");
     const refreshBox = document.getElementById("refresh-box");
+    const profileSelect = document.getElementById("profile-select");
+    const applyProfileButton = document.getElementById("apply-profile");
+    const reloadModelButton = document.getElementById("reload-model");
+    const modelMessage = document.getElementById("model-message");
+    const profilesBox = document.getElementById("profiles-box");
+
+    function renderProfiles(items, activeProfile) {
+      profileSelect.innerHTML = "";
+      profilesBox.innerHTML = "";
+      (items || []).forEach((item) => {
+        const option = document.createElement("option");
+        option.value = item.name;
+        option.textContent = `${item.label} (${item.config.llm_model})`;
+        if (item.name === activeProfile) option.selected = true;
+        profileSelect.appendChild(option);
+
+        const card = document.createElement("div");
+        card.className = `profile tiny${item.name === activeProfile ? " active" : ""}`;
+        card.innerHTML = `<strong>${item.label}</strong><br>${item.description || ""}<br><br><strong>Model</strong><br>${item.config.llm_model}<br><br><strong>Runtime</strong><br>${item.config.device} / ${item.config.quantization_backend}${item.matches_current_runtime ? "<br><br><strong>Current runtime match</strong>" : ""}`;
+        profilesBox.appendChild(card);
+      });
+    }
+
     async function loadConfiguration() {
       try {
         const res = await fetch("/platform/configuration");
         const json = await res.json();
         const models = json.models || {};
-        modelsBox.innerHTML = `<strong>LLM</strong><br>${models.llm_model || "Not set"}<br><br><strong>Embeddings</strong><br>${models.embedding_model || "Not set"}<br><br><strong>Device</strong><br>${models.device || "?"} -> ${models.effective_device || "?"}<br><br><strong>Quantization</strong><br>${models.quantization_backend || "?"} -> ${models.effective_quantization_backend || "?"}<br><br><strong>Prompt</strong><br>${models.prompt_version || "?"}`;
+        modelsBox.innerHTML = `<strong>Active profile</strong><br>${models.active_profile || "custom"}<br><br><strong>LLM</strong><br>${models.llm_model || "Not set"}<br><br><strong>Embeddings</strong><br>${models.embedding_model || "Not set"}<br><br><strong>Device</strong><br>${models.device || "?"} -> ${models.effective_device || "?"}<br><br><strong>Quantization</strong><br>${models.quantization_backend || "?"} -> ${models.effective_quantization_backend || "?"}<br><br><strong>Prompt</strong><br>${models.prompt_version || "?"}`;
         const paths = json.paths || {};
         pathsBox.textContent = Object.entries(paths).map(([key, value]) => `${key} = ${value}`).join("\n");
         const hitl = json.hitl || {};
         hitlBox.innerHTML = `<strong>Keywords</strong><br>${(hitl.review_keywords || []).join(", ") || "none"}<br><br><strong>Length threshold</strong><br>${hitl.response_length_threshold ?? "?"}<br><br><strong>Preview chars</strong><br>${hitl.response_preview_chars ?? "?"}`;
         refreshBox.innerHTML = `<strong>Telemetry refresh</strong><br>every ${json.refresh?.telemetry_refresh_seconds || 5} seconds`;
-      } catch (error) { modelsBox.textContent = error.message; }
+        renderProfiles(json.model_profiles?.profiles || [], json.model_profiles?.active_profile || models.active_profile);
+        modelMessage.textContent = "Select a profile to switch models without editing YAML by hand.";
+      } catch (error) {
+        modelsBox.textContent = error.message;
+        modelMessage.textContent = error.message;
+      }
     }
+
+    async function applyProfile() {
+      modelMessage.textContent = "Applying model profile...";
+      try {
+        const res = await fetch("/platform/models/apply", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ profile: profileSelect.value }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.detail || "Failed to apply model profile.");
+        modelMessage.textContent = json.message || "Model profile updated.";
+        await loadConfiguration();
+      } catch (error) {
+        modelMessage.textContent = error.message;
+      }
+    }
+
+    async function reloadWorker() {
+      modelMessage.textContent = "Reloading model worker...";
+      try {
+        const res = await fetch("/platform/models/reload", { method: "POST" });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.detail || "Failed to reload worker.");
+        modelMessage.textContent = json.message || "Model worker reloaded.";
+      } catch (error) {
+        modelMessage.textContent = error.message;
+      }
+    }
+
+    applyProfileButton.addEventListener("click", applyProfile);
+    reloadModelButton.addEventListener("click", reloadWorker);
     loadConfiguration();
   </script>
 </body>

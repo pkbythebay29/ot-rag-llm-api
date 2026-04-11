@@ -16,6 +16,7 @@ Krionis ships with a browser console that is entirely API driven. The built-in U
 The landing page keeps only the controllable workflow:
 
 - start an agent
+- switch the active model profile
 - stop an agent
 - select which active agent receives the next query
 - rebuild the retrieval cache
@@ -40,3 +41,13 @@ The console exposes where the RAG retriever is reading files from and where the 
 - index directory: the FAISS and metadata cache directory
 
 This allows operators to add new files, then rebuild the cache from either the UI or the API.
+
+## Model profiles
+
+Krionis exposes named model profiles through the same API-first console surface:
+
+- `GET /platform/models` lists the available profiles
+- `POST /platform/models/apply` persists the chosen profile into YAML
+- `POST /platform/models/reload` resets only the isolated query worker
+
+This keeps model swapping simple for operators while still preserving the YAML-backed runtime contract for custom frontends and deployment automation.

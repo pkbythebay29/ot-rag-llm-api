@@ -125,13 +125,25 @@ mkdocs build --strict
 The integrated platform now exposes one operator-first flow:
 
 1. Start an agent from the landing page.
-2. Rebuild the retrieval cache when source files change.
-3. Submit a controlled query through the selected agent.
-4. Review flagged outputs in the review dashboard.
-5. Rate outputs as `Good` or `Bad`, with the result stored in local metadata records.
-6. Submit regulated documents through the compliance console to compare them against an indexed regulation corpus.
+2. Switch the active model profile from the same landing page without editing YAML by hand.
+3. Rebuild the retrieval cache when source files change.
+4. Submit a controlled query through the selected agent.
+5. Review flagged outputs in the review dashboard.
+6. Rate outputs as `Good` or `Bad`, with the result stored in local metadata records.
+7. Submit regulated documents through the compliance console to compare them against an indexed regulation corpus.
 
 All of those interactions are also available through the API, so teams can build their own frontend on top of the same contract.
+
+## Model switching
+
+Krionis now supports named model profiles in `config/system.yaml`, so teams can swap between CPU-safe and GPU-ready profiles without hand-editing several settings at once.
+
+- built-in model profiles are exposed at `GET /platform/models`
+- apply a profile through `POST /platform/models/apply`
+- reload the isolated query worker through `POST /platform/models/reload`
+- the landing operator page exposes the same action directly
+
+The next query picks up the selected profile automatically because Krionis resets only the isolated model worker instead of restarting the whole API.
 
 ## Compliance assessments
 

@@ -112,6 +112,7 @@ def test_root_ui_explains_hitl_and_audit(app_client):
     assert "Krionis" in response.text
     assert "Workflow" in response.text
     assert "Start Agent" in response.text
+    assert "Apply Model" in response.text
     assert "Rebuild Cache" in response.text
     assert "Good" in response.text
     assert "/ui/compliance" in response.text
@@ -177,6 +178,11 @@ def test_platform_metadata_and_audit_routes(app_client):
     configuration = client.get("/platform/configuration")
     assert configuration.status_code == 200
     assert configuration.json()["paths"]["metadata_store"]
+    assert configuration.json()["model_profiles"]["profiles"]
+
+    models = client.get("/platform/models")
+    assert models.status_code == 200
+    assert any(item["name"] == "cpu-compact" for item in models.json()["profiles"])
 
 
 def test_quality_feedback_endpoint_records_rating(app_client):
@@ -237,6 +243,50 @@ def test_platform_agent_lifecycle_routes(app_client):
     stopped = client.delete(f"/platform/agents/{task_id}")
     assert stopped.status_code == 200
     assert stopped.json()["status"] == "stopped"
+
+
+def test_model_profile_apply_updates_configuration_and_resets_worker(
+    app_client, monkeypatch
+):
+    from rag_llm_api_pipeline.core import model_admin
+
+    reset_calls: list[str] = []
+
+    def _fake_reset(reason=None):
+        reset_calls.append(reason or "")
+        return {"state": "idle", "last_error": reason}
+
+    monkeypatch.setattr(model_admin, "reset_query_worker", _fake_reset)
+
+    client = app_client["client"]
+    response = client.post("/platform/models/apply", json={"profile": "cpu-balanced"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["active_profile"] == "cpu-balanced"
+    assert body["current_llm_model"] == "Qwen/Qwen2.5-1.5B-Instruct"
+    assert body["worker_reset"] is True
+    assert reset_calls
+
+    configuration = client.get("/platform/configuration")
+    assert configuration.status_code == 200
+    assert configuration.json()["models"]["active_profile"] == "cpu-balanced"
+
+
+def test_model_reload_endpoint_resets_worker(app_client, monkeypatch):
+    from rag_llm_api_pipeline.api import platform_routes
+
+    monkeypatch.setattr(
+        platform_routes,
+        "reset_query_worker",
+        lambda reason=None: {"state": "idle", "last_error": reason},
+    )
+
+    client = app_client["client"]
+    response = client.post("/platform/models/reload")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "reloaded"
 
 
 def test_index_rebuild_endpoint_returns_stubbed_report(app_client, monkeypatch):

@@ -60,6 +60,17 @@ def get_query_worker_status() -> dict[str, Any]:
         return dict(_worker_status)
 
 
+def reset_query_worker(reason: str | None = None) -> dict[str, Any]:
+    _reset_executor()
+    _set_status(
+        state="idle",
+        last_error=reason,
+        last_finished_at=time.time(),
+        last_worker_pid=None,
+    )
+    return get_query_worker_status()
+
+
 def run_query_in_worker(
     system_name: str, question: str, *, timeout_sec: float = 900.0
 ) -> dict[str, Any]:

@@ -26,8 +26,15 @@ from rag_llm_api_pipeline.core.index_worker import (
     get_index_worker_status,
     rebuild_index_in_worker,
 )
+from rag_llm_api_pipeline.core.model_admin import (
+    apply_model_profile,
+    get_model_profiles,
+)
 from rag_llm_api_pipeline.core.platform_state import list_recent_routes
-from rag_llm_api_pipeline.core.query_worker import get_query_worker_status
+from rag_llm_api_pipeline.core.query_worker import (
+    get_query_worker_status,
+    reset_query_worker,
+)
 from rag_llm_api_pipeline.core.security import validate_api_key_header
 from rag_llm_api_pipeline.core.system_assets import list_regulation_pools
 from rag_llm_api_pipeline.core.system_metadata import get_system_metadata
@@ -235,6 +242,7 @@ def _get_refresh_seconds(config: dict[str, Any]) -> int:
 
 def _configuration_summary(config: dict[str, Any]) -> dict[str, Any]:
     runtime_model = _resolved_model_runtime(config)
+    model_profiles = get_model_profiles(config)
     return {
         "system_metadata": get_system_metadata(),
         "refresh": {
@@ -252,7 +260,9 @@ def _configuration_summary(config: dict[str, Any]) -> dict[str, Any]:
             ],
             "preset": config.get("llm", {}).get("preset"),
             "prompt_version": config.get("llm", {}).get("prompt_version"),
+            "active_profile": model_profiles["active_profile"],
         },
+        "model_profiles": model_profiles,
         "paths": {
             "data_dir": os.path.abspath(
                 config.get("settings", {}).get("data_dir", "data/manuals")
@@ -263,7 +273,9 @@ def _configuration_summary(config: dict[str, Any]) -> dict[str, Any]:
             "review_store": os.path.abspath(review_store.get_db_path()),
             "metadata_store": os.path.abspath(metadata_store.get_db_path()),
             "compliance_store": os.path.abspath(compliance_store.get_db_path()),
-            "regulation_pool_store": os.path.abspath(regulation_pool_store.get_db_path()),
+            "regulation_pool_store": os.path.abspath(
+                regulation_pool_store.get_db_path()
+            ),
             "audit_log": os.path.abspath(
                 config.get("audit", {}).get("log_path", "data/audit/audit_log.jsonl")
             ),
@@ -299,6 +311,19 @@ class IndexRebuildResponse(BaseModel):
     status: str
     report: dict[str, Any]
     worker: dict[str, Any]
+
+
+class ModelApplyRequest(BaseModel):
+    profile: str | None = Field(
+        default=None,
+        description="Named model profile to apply from config/system.yaml.",
+    )
+    llm_model: str | None = None
+    device: str | None = None
+    model_precision: str | None = None
+    quantization_backend: str | None = None
+    low_cpu_mem_usage: bool | None = None
+    use_cpu: bool | None = None
 
 
 @router.get(
@@ -380,6 +405,56 @@ def get_telemetry_status() -> dict[str, Any]:
 def get_configuration_snapshot() -> dict[str, Any]:
     config = load_config() or {}
     return _configuration_summary(config)
+
+
+@router.get(
+    "/platform/models",
+    tags=["Configuration"],
+    summary="Get model profiles",
+    description="Return the available Krionis model profiles and the currently active runtime model selection.",
+)
+def get_model_profiles_route() -> dict[str, Any]:
+    return get_model_profiles(load_config() or {})
+
+
+@router.post(
+    "/platform/models/apply",
+    tags=["Configuration"],
+    summary="Apply a model profile",
+    description="Persist a model selection to config/system.yaml and reset only the isolated query worker so the next query uses the new model.",
+)
+def apply_model_profile_route(payload: ModelApplyRequest) -> dict[str, Any]:
+    overrides = payload.model_dump(exclude_none=True)
+    profile_name = overrides.pop("profile", None)
+    if not profile_name and not overrides:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide a profile name or at least one model override.",
+        )
+    try:
+        return apply_model_profile(profile_name=profile_name, overrides=overrides)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/platform/models/reload",
+    tags=["Configuration"],
+    summary="Reload the model worker",
+    description="Reset the isolated query worker without changing configuration. The next query will reload the current model profile.",
+)
+def reload_model_worker_route() -> dict[str, Any]:
+    worker = reset_query_worker(
+        "Model worker reset requested. The next query will reload the current profile."
+    )
+    return {
+        "status": "reloaded",
+        "message": "The next query will reload the current model profile.",
+        "worker": worker,
+    }
 
 
 @router.get(

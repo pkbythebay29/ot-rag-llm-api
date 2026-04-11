@@ -7,11 +7,40 @@ assets:
     docs: []
 
 models:
+  active_profile: cpu-compact
   llm_model: Qwen/Qwen2.5-0.5B-Instruct
   device: cpu
   model_precision: auto
   quantization_backend: dynamic-int8
   low_cpu_mem_usage: true
+  profiles:
+    cpu-compact:
+      label: CPU Compact
+      description: Smallest local profile for reliable CPU and air-gapped bring-up.
+      llm_model: Qwen/Qwen2.5-0.5B-Instruct
+      device: cpu
+      use_cpu: true
+      model_precision: auto
+      quantization_backend: dynamic-int8
+      low_cpu_mem_usage: true
+    cpu-balanced:
+      label: CPU Balanced
+      description: Stronger CPU profile that still prefers int8 quantization.
+      llm_model: Qwen/Qwen2.5-1.5B-Instruct
+      device: cpu
+      use_cpu: true
+      model_precision: auto
+      quantization_backend: dynamic-int8
+      low_cpu_mem_usage: true
+    gpu-quality:
+      label: GPU Quality
+      description: Higher-quality GPU profile with non-quantized CUDA runtime.
+      llm_model: Qwen/Qwen2.5-3B-Instruct
+      device: auto
+      use_cpu: false
+      model_precision: auto
+      quantization_backend: auto
+      low_cpu_mem_usage: true
   use_harmony: false
   memory_strategy:
     use_expandable_segments: true

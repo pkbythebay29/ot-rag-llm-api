@@ -52,9 +52,7 @@ def ensure_runtime_home() -> Path:
             (runtime_home / "data" / "reviews").mkdir(parents=True, exist_ok=True)
             (runtime_home / "data" / "audit").mkdir(parents=True, exist_ok=True)
             (runtime_home / "data" / "feedback").mkdir(parents=True, exist_ok=True)
-            (runtime_home / "data" / "compliance").mkdir(
-                parents=True, exist_ok=True
-            )
+            (runtime_home / "data" / "compliance").mkdir(parents=True, exist_ok=True)
             (runtime_home / "indices").mkdir(parents=True, exist_ok=True)
 
             target_config = runtime_home / "config" / "system.yaml"
@@ -85,6 +83,20 @@ def get_config_path() -> str:
 
     runtime_home = ensure_runtime_home()
     return str((runtime_home / "config" / "system.yaml").resolve())
+
+
+def load_raw_config(config_path: str | Path | None = None) -> dict[str, Any]:
+    resolved_config_path = Path(config_path or get_config_path()).expanduser().resolve()
+    with open(resolved_config_path, "r", encoding="utf-8") as handle:
+        return yaml.safe_load(handle) or {}
+
+
+def save_config(cfg: dict[str, Any], *, config_path: str | Path | None = None) -> str:
+    resolved_config_path = Path(config_path or get_config_path()).expanduser().resolve()
+    resolved_config_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(resolved_config_path, "w", encoding="utf-8") as handle:
+        yaml.safe_dump(cfg, handle, sort_keys=False, allow_unicode=False)
+    return str(resolved_config_path)
 
 
 def get_config_root(config_path: str | Path | None = None) -> Path:
@@ -136,6 +148,5 @@ def _normalize_runtime_paths(cfg: dict[str, Any], config_path: str) -> dict[str,
 
 def load_config() -> dict[str, Any]:
     config_path = get_config_path()
-    with open(config_path, "r", encoding="utf-8") as handle:
-        cfg = yaml.safe_load(handle) or {}
+    cfg = load_raw_config(config_path)
     return _normalize_runtime_paths(cfg, config_path)

@@ -1,4 +1,5 @@
 from pathlib import Path
+from shutil import copyfile
 
 import pytest
 from fastapi.testclient import TestClient
@@ -33,6 +34,13 @@ class FakeOrchestrator:
 
 @pytest.fixture()
 def app_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    source_config = Path(__file__).resolve().parent.parent / "config" / "system.yaml"
+    runtime_config_dir = tmp_path / "config"
+    runtime_config_dir.mkdir(parents=True, exist_ok=True)
+    runtime_config_path = runtime_config_dir / "system.yaml"
+    copyfile(source_config, runtime_config_path)
+
+    monkeypatch.setenv("KRIONIS_CONFIG_PATH", str(runtime_config_path))
     monkeypatch.setenv("KRIONIS_REVIEW_API_KEY", "test-review-key")
     monkeypatch.setenv("KRIONIS_REVIEW_DB_PATH", str(tmp_path / "reviews.sqlite3"))
     monkeypatch.setenv(
