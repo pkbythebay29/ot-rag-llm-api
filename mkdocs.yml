@@ -1,7 +1,7 @@
 site_name: Krionis Platform Docs
 site_url: https://docs.krionis.com/
-repo_url: https://github.com/pkbythebay29/ot-rag-llm-api
-repo_name: pkbythebay29/ot-rag-llm-api
+repo_url: https://github.com/pkbythebay29/krionis-platform
+repo_name: pkbythebay29/krionis-platform
 site_description: Industry-grade documentation for the Krionis HITL-controlled RAG platform.
 
 theme:

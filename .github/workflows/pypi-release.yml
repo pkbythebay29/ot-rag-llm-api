@@ -1,0 +1,108 @@
+name: Publish To PyPI
+
+on:
+  push:
+    tags:
+      - "pipeline-v*"
+      - "orchestrator-v*"
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Package to publish"
+        required: true
+        type: choice
+        options:
+          - pipeline
+          - orchestrator
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Build and publish package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: |
+          python -m pip install -U pip
+          pip install build twine
+
+      - name: Resolve publish target
+        id: target
+        shell: bash
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            TARGET="${{ inputs.package }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+            if [[ "$TAG" == pipeline-v* ]]; then
+              TARGET="pipeline"
+            elif [[ "$TAG" == orchestrator-v* ]]; then
+              TARGET="orchestrator"
+            else
+              echo "Unsupported tag format: $TAG"
+              exit 1
+            fi
+          fi
+          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+          echo "Publishing target: $TARGET"
+
+      - name: Validate repository slug references
+        shell: bash
+        run: |
+          if ! grep -q "pkbythebay29/krionis-platform" setup.py; then
+            echo "Root setup.py does not point to renamed repository slug."
+            exit 1
+          fi
+          if ! grep -q "pkbythebay29/krionis-platform" rag_orchestrator/setup.py; then
+            echo "Orchestrator setup.py does not point to renamed repository slug."
+            exit 1
+          fi
+
+      - name: Build target package
+        shell: bash
+        run: |
+          rm -rf dist pipeline-dist orchestrator-dist
+          if [[ "${{ steps.target.outputs.target }}" == "pipeline" ]]; then
+            python -m build
+            mkdir -p pipeline-dist
+            cp dist/* pipeline-dist/
+          else
+            cd rag_orchestrator
+            python -m build
+            cd ..
+            mkdir -p orchestrator-dist
+            cp rag_orchestrator/dist/* orchestrator-dist/
+          fi
+
+      - name: Twine check
+        shell: bash
+        run: |
+          if [[ "${{ steps.target.outputs.target }}" == "pipeline" ]]; then
+            python -m twine check pipeline-dist/*
+          else
+            python -m twine check orchestrator-dist/*
+          fi
+
+      - name: Publish pipeline to PyPI
+        if: steps.target.outputs.target == 'pipeline'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: pipeline-dist/
+
+      - name: Publish orchestrator to PyPI
+        if: steps.target.outputs.target == 'orchestrator'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: orchestrator-dist/

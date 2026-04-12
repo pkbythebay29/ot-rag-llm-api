@@ -12,13 +12,13 @@ with open("requirements.txt", encoding="utf-8") as f:
 
 setup(
     name="krionis-pipeline",
-    version="1.0.1",
+    version="1.0.2",
     author="pkbythebay29",
     author_email="kannan@haztechrisk.org",
     description="Krionis Pipeline - multimodal RAG pipeline for low-compute, local, real-world deployment",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/pkbythebay29/ot-rag-llm-api",
+    url="https://github.com/pkbythebay29/krionis-platform",
     packages=find_packages(),
     include_package_data=True,
     package_data={
@@ -46,6 +46,6 @@ setup(
     ],
     project_urls={
         "Homepage": "https://pypi.org/project/krionis-pipeline/",
-        "Source": "https://github.com/pkbythebay29/ot-rag-llm-api",
+        "Source": "https://github.com/pkbythebay29/krionis-platform",
     },
 )

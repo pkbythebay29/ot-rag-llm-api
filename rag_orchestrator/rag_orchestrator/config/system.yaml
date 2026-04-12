@@ -1,5 +1,5 @@
 # ===============================
-# rag-llm-api-pipeline — system.yaml
+# krionis-platform — system.yaml
 # ===============================
 
 assets:
@@ -63,7 +63,7 @@ llm:
     You are a precise, concise assistant for industrial systems.
 
    # ===============================
-# rag-llm-api-pipeline — system.yaml
+# krionis-platform — system.yaml
 # ===============================
 
 assets:

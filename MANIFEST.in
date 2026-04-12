@@ -1,6 +1,8 @@
 include README-Krionis-pipeline.md
 include LICENSE
 include CHANGELOG.md
+include RELEASE_NOTES_PIPELINE_*.md
+include RELEASE_NOTES_ORCHESTRATOR_*.md
 include requirements.txt
 
 recursive-include rag_llm_api_pipeline/api *.py

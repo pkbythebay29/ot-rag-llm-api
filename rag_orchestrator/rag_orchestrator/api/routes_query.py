@@ -19,7 +19,7 @@ router = APIRouter(prefix="", tags=["query"])
 
 # ---- paths for system.yaml (your repo has config/system.yaml) ----
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SYSTEMS_ROOT = REPO_ROOT / "config"  # e.g. E:/rag_llm_api_pipeline/config
+SYSTEMS_ROOT = REPO_ROOT / "config"  # e.g. E:/krionis-platform/config
 FALLBACK_YAML = "system.yaml"  # inside SYSTEMS_ROOT
 
 

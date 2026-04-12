@@ -1,4 +1,4 @@
-# 🚀 Quickstart: OT RAG LLM API Pipeline
+# 🚀 Quickstart: Krionis Platform
 
 This quickstart shows how to install, configure, index, and run the pipeline in minutes.
 
@@ -8,8 +8,8 @@ This quickstart shows how to install, configure, index, and run the pipeline in 
 
 Clone the repo:
 ```bash
-git clone https://github.com/pkbythebay29/ot-rag-llm-api.git
-cd ot-rag-llm-api
+git clone https://github.com/pkbythebay29/krionis-platform.git
+cd krionis-platform
 ```
 Create and activate a virtual environment:
 ```

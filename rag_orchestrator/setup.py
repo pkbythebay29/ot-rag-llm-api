@@ -5,13 +5,13 @@ with open("README.md", encoding="utf-8") as f:
 
 setup(
     name="krionis-orchestrator",
-    version="1.0.1",
+    version="1.0.2",
     author="pkbythebay29",
     author_email="kannan@haztechrisk.org",
     description="Krionis Orchestrator - agent lifecycle, routing, and telemetry on top of Krionis Pipeline",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/pkbythebay29/ot-rag-llm-api",
+    url="https://github.com/pkbythebay29/krionis-platform",
     packages=find_packages(),
     include_package_data=True,
     python_requires=">=3.10",
@@ -26,7 +26,7 @@ setup(
     ],
     project_urls={
         "Homepage": "https://pypi.org/project/krionis-orchestrator/",
-        "Source": "https://github.com/pkbythebay29/ot-rag-llm-api",
+        "Source": "https://github.com/pkbythebay29/krionis-platform",
     },
     entry_points={
         "console_scripts": [

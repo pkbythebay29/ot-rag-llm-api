@@ -24,7 +24,7 @@ from rag_llm_api_pipeline.db import compliance_store, metadata_store, review_sto
 from rag_llm_api_pipeline.ui.ui_routes import root_router, router as ui_router
 
 """
-FastAPI server for RAG LLM API Pipeline
+FastAPI server for Krionis Platform
 - Serves web UI (CWD -> env -> packaged)
 - /health and /query endpoints
 """

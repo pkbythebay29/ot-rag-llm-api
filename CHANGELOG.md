@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
+## [1.0.2] - 2026-04-12
+
+### Changed
+- Repository slug references now point to `pkbythebay29/krionis-platform` across packaging and documentation metadata
+- Branding text updated to consistently use **Krionis Platform** in user-facing quickstart and roadmap content
+
+### Added
+- Release notes for pipeline and orchestrator `1.0.2`
+- GitHub Actions workflow for PyPI publishing with trusted publishing support for both monorepo packages
+
+### Fixed
+- Repository URLs in package metadata now align with renamed remote slug to avoid stale source links on PyPI
+
 ## [1.0.1] - 2026-04-06
 
 ### Fixed
