@@ -2,9 +2,19 @@ name: Publish To PyPI
 
 on:
   push:
+    branches: [main]
     tags:
       - "pipeline-v*"
       - "orchestrator-v*"
+    paths:
+      - "setup.py"
+      - "rag_orchestrator/setup.py"
+      - "MANIFEST.in"
+      - "README-Krionis-pipeline.md"
+      - "rag_orchestrator/README.md"
+      - "CHANGELOG.md"
+      - "RELEASE_NOTES_*.md"
+      - ".github/workflows/pypi-release.yml"
   workflow_dispatch:
     inputs:
       package:
@@ -12,6 +22,7 @@ on:
         required: true
         type: choice
         options:
+          - both
           - pipeline
           - orchestrator
 
@@ -20,8 +31,12 @@ permissions:
   id-token: write
 
 jobs:
-  publish:
-    name: Build and publish package
+  publish_pipeline:
+    name: Build and publish krionis-pipeline
+    if: >
+      (github.event_name == 'workflow_dispatch' && (inputs.package == 'pipeline' || inputs.package == 'both')) ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/pipeline-v')) ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
 
     steps:
@@ -38,26 +53,6 @@ jobs:
           python -m pip install -U pip
           pip install build twine
 
-      - name: Resolve publish target
-        id: target
-        shell: bash
-        run: |
-          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
-            TARGET="${{ inputs.package }}"
-          else
-            TAG="${GITHUB_REF_NAME}"
-            if [[ "$TAG" == pipeline-v* ]]; then
-              TARGET="pipeline"
-            elif [[ "$TAG" == orchestrator-v* ]]; then
-              TARGET="orchestrator"
-            else
-              echo "Unsupported tag format: $TAG"
-              exit 1
-            fi
-          fi
-          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
-          echo "Publishing target: $TARGET"
-
       - name: Validate repository slug references
         shell: bash
         run: |
@@ -65,44 +60,143 @@ jobs:
             echo "Root setup.py does not point to renamed repository slug."
             exit 1
           fi
+
+      - name: Resolve pipeline versions
+        id: versions
+        shell: bash
+        run: |
+          LOCAL_VERSION=$(python - <<'PY'
+          import re
+          from pathlib import Path
+          text = Path("setup.py").read_text(encoding="utf-8")
+          m = re.search(r'version\s*=\s*"([^"]+)"', text)
+          if not m:
+              raise SystemExit("Could not determine pipeline version from setup.py")
+          print(m.group(1))
+          PY
+          )
+          REMOTE_VERSION=$(python - <<'PY'
+          import json, urllib.request
+          try:
+              with urllib.request.urlopen("https://pypi.org/pypi/krionis-pipeline/json", timeout=15) as r:
+                  data = json.load(r)
+              print(data["info"]["version"])
+          except Exception:
+              print("none")
+          PY
+          )
+          echo "local=$LOCAL_VERSION" >> "$GITHUB_OUTPUT"
+          echo "remote=$REMOTE_VERSION" >> "$GITHUB_OUTPUT"
+          if [[ "$LOCAL_VERSION" == "$REMOTE_VERSION" ]]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "No publish needed: pipeline version $LOCAL_VERSION already on PyPI."
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "Publish required: local $LOCAL_VERSION vs PyPI $REMOTE_VERSION."
+          fi
+
+      - name: Build pipeline package
+        if: steps.versions.outputs.publish == 'true'
+        shell: bash
+        run: |
+          rm -rf dist pipeline-dist
+          python -m build
+          mkdir -p pipeline-dist
+          cp dist/* pipeline-dist/
+
+      - name: Twine check (pipeline)
+        if: steps.versions.outputs.publish == 'true'
+        shell: bash
+        run: python -m twine check pipeline-dist/*
+
+      - name: Publish pipeline to PyPI
+        if: steps.versions.outputs.publish == 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: pipeline-dist/
+
+  publish_orchestrator:
+    name: Build and publish krionis-orchestrator
+    if: >
+      (github.event_name == 'workflow_dispatch' && (inputs.package == 'orchestrator' || inputs.package == 'both')) ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/orchestrator-v')) ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: |
+          python -m pip install -U pip
+          pip install build twine
+
+      - name: Validate repository slug references
+        shell: bash
+        run: |
           if ! grep -q "pkbythebay29/krionis-platform" rag_orchestrator/setup.py; then
             echo "Orchestrator setup.py does not point to renamed repository slug."
             exit 1
           fi
 
-      - name: Build target package
+      - name: Resolve orchestrator versions
+        id: versions
         shell: bash
         run: |
-          rm -rf dist pipeline-dist orchestrator-dist
-          if [[ "${{ steps.target.outputs.target }}" == "pipeline" ]]; then
-            python -m build
-            mkdir -p pipeline-dist
-            cp dist/* pipeline-dist/
+          LOCAL_VERSION=$(python - <<'PY'
+          import re
+          from pathlib import Path
+          text = Path("rag_orchestrator/setup.py").read_text(encoding="utf-8")
+          m = re.search(r'version\s*=\s*"([^"]+)"', text)
+          if not m:
+              raise SystemExit("Could not determine orchestrator version from rag_orchestrator/setup.py")
+          print(m.group(1))
+          PY
+          )
+          REMOTE_VERSION=$(python - <<'PY'
+          import json, urllib.request
+          try:
+              with urllib.request.urlopen("https://pypi.org/pypi/krionis-orchestrator/json", timeout=15) as r:
+                  data = json.load(r)
+              print(data["info"]["version"])
+          except Exception:
+              print("none")
+          PY
+          )
+          echo "local=$LOCAL_VERSION" >> "$GITHUB_OUTPUT"
+          echo "remote=$REMOTE_VERSION" >> "$GITHUB_OUTPUT"
+          if [[ "$LOCAL_VERSION" == "$REMOTE_VERSION" ]]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "No publish needed: orchestrator version $LOCAL_VERSION already on PyPI."
           else
-            cd rag_orchestrator
-            python -m build
-            cd ..
-            mkdir -p orchestrator-dist
-            cp rag_orchestrator/dist/* orchestrator-dist/
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "Publish required: local $LOCAL_VERSION vs PyPI $REMOTE_VERSION."
           fi
 
-      - name: Twine check
+      - name: Build orchestrator package
+        if: steps.versions.outputs.publish == 'true'
         shell: bash
         run: |
-          if [[ "${{ steps.target.outputs.target }}" == "pipeline" ]]; then
-            python -m twine check pipeline-dist/*
-          else
-            python -m twine check orchestrator-dist/*
-          fi
+          rm -rf rag_orchestrator/dist orchestrator-dist
+          cd rag_orchestrator
+          python -m build
+          cd ..
+          mkdir -p orchestrator-dist
+          cp rag_orchestrator/dist/* orchestrator-dist/
 
-      - name: Publish pipeline to PyPI
-        if: steps.target.outputs.target == 'pipeline'
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: pipeline-dist/
+      - name: Twine check (orchestrator)
+        if: steps.versions.outputs.publish == 'true'
+        shell: bash
+        run: python -m twine check orchestrator-dist/*
 
       - name: Publish orchestrator to PyPI
-        if: steps.target.outputs.target == 'orchestrator'
+        if: steps.versions.outputs.publish == 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: orchestrator-dist/
