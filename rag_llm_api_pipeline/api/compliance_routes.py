@@ -20,7 +20,7 @@ from rag_llm_api_pipeline.core.compliance import (
 )
 from rag_llm_api_pipeline.core.controlled import (
     build_controlled_response,
-    execute_query,
+    execute_query_with_runtime,
 )
 from rag_llm_api_pipeline.core.hitl import utc_now_iso
 from rag_llm_api_pipeline.core.index_admin import get_index_status
@@ -55,6 +55,18 @@ class ComplianceAssessmentRequest(BaseModel):
     focus: str | None = Field(
         default=None,
         description="Optional focus area such as validation, change control, or data integrity.",
+    )
+    runtime_profile: str | None = Field(
+        default=None,
+        description="Optional named runtime profile for the assessment query.",
+    )
+    inference_model: str | None = Field(
+        default=None,
+        description="Optional inference model key or Hugging Face identifier.",
+    )
+    embedding_model: str | None = Field(
+        default=None,
+        description="Optional embedding model key or Hugging Face identifier.",
     )
 
 
@@ -172,7 +184,15 @@ def assess_document(
             framework=payload.framework,
             focus=payload.focus,
         )
-        result = execute_query(regulation_system, compliance_question)
+        runtime_selection = payload.model_dump(
+            include={"runtime_profile", "inference_model", "embedding_model"},
+            exclude_none=True,
+        )
+        result = execute_query_with_runtime(
+            regulation_system,
+            compliance_question,
+            runtime_selection=runtime_selection,
+        )
         response = build_controlled_response(
             system_id=regulation_system,
             question=compliance_question,
@@ -180,6 +200,7 @@ def assess_document(
             user_id=user_id,
             trace_id=trace_id,
             route_name="compliance_assessment",
+            runtime_selection=runtime_selection,
             extra_review_fields={
                 "assessment_id": assessment_id,
                 "assessment_type": "regulated_document_compliance",

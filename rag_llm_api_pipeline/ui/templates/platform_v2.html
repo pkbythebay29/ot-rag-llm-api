@@ -15,6 +15,8 @@
       --line-strong: rgba(17, 17, 17, 0.14);
       --fill: #111111;
       --fill-soft: rgba(17, 17, 17, 0.06);
+      --alert: #9c4b23;
+      --alert-soft: rgba(156, 75, 35, 0.08);
       --shadow: 0 24px 60px rgba(15, 15, 15, 0.08);
       --radius-xl: 28px;
     }
@@ -31,7 +33,7 @@
     }
 
     .shell {
-      max-width: 1360px;
+      max-width: 1400px;
       margin: 0 auto;
       padding: 28px 20px 40px;
     }
@@ -87,7 +89,7 @@
 
     .grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.2fr) minmax(340px, 1fr);
+      grid-template-columns: minmax(0, 1.25fr) minmax(340px, 1fr);
       gap: 20px;
       align-items: start;
     }
@@ -149,6 +151,18 @@
       cursor: not-allowed;
     }
 
+    .compact-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .triplet-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
     .controls, .feedback-row {
       display: flex;
       flex-wrap: wrap;
@@ -183,6 +197,16 @@
       border: 1px solid var(--line);
       background: rgba(255, 255, 255, 0.88);
       white-space: pre-wrap;
+      line-height: 1.55;
+    }
+
+    .warning {
+      margin-top: 18px;
+      padding: 16px 18px;
+      border-radius: 20px;
+      border: 1px solid rgba(156, 75, 35, 0.2);
+      background: var(--alert-soft);
+      color: var(--alert);
       line-height: 1.55;
     }
 
@@ -235,7 +259,7 @@
       transition: width 0.24s ease;
     }
 
-    .kv, .stack, .list {
+    .kv, .list {
       display: grid;
       gap: 12px;
       margin-top: 14px;
@@ -278,19 +302,12 @@
       line-height: 1.45;
     }
 
-    .compact-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 10px;
-      align-items: end;
-      margin-top: 16px;
-    }
-
-    @media (max-width: 980px) {
+    @media (max-width: 1040px) {
       .grid { grid-template-columns: 1fr; }
     }
 
-    @media (max-width: 680px) {
+    @media (max-width: 760px) {
+      .compact-grid, .triplet-grid { grid-template-columns: 1fr; }
       .shell { padding: 18px 12px 28px; }
       .hero, .main, .sidebar .panel { padding: 20px; }
       .hero h1 { font-size: 2rem; }
@@ -302,7 +319,7 @@
   <main class="shell">
     <section class="panel hero">
       <h1>Krionis</h1>
-      <p>The operator view only keeps the controllable workflow in one place: agents, retrieval cache, query routing, review, and rating.</p>
+      <p>The operator view now keeps model selection, agent startup, embedding-aware cache rebuilds, controlled query routing, and HITL signoff guidance in one place.</p>
     </section>
 
     <nav class="nav">
@@ -318,26 +335,55 @@
     <section class="grid">
       <div class="panel main">
         <h2>Workflow</h2>
-        <p class="sub">Start an agent, select the active agent you want to use, submit a controlled query, review if needed, and rate the result.</p>
+        <p class="sub">Pick a default model profile, choose an agent runtime, rebuild the matching embedding cache if needed, then route controlled queries through the selected agent.</p>
 
         <label class="label" for="system">System</label>
         <input id="system" value="TestSystem" />
 
-        <label class="label" for="model-profile">Model</label>
+        <div class="divider"></div>
+
+        <h3>Default Runtime</h3>
+        <p class="tiny">This sets the global fallback profile that direct queries use when no agent-specific runtime is supplied.</p>
         <div class="compact-grid">
-          <select id="model-profile"></select>
-          <button id="apply-model" class="secondary">Apply Model</button>
+          <div>
+            <label class="label" for="model-profile">Default Model Profile</label>
+            <select id="model-profile"></select>
+          </div>
+          <div style="display:flex; align-items:end;">
+            <button id="apply-model" class="secondary" style="width:100%;">Apply Model Profile</button>
+          </div>
         </div>
-        <div id="model-message" class="tiny" style="margin-top:10px;">Loading model profiles...</div>
+        <div id="model-message" class="tiny" style="margin-top:10px;">Loading default model profiles...</div>
+
+        <div class="divider"></div>
+
+        <h3>Agent Runtime</h3>
+        <p class="tiny">Agents can share one small runtime or run a different Hugging Face inference and embedding model combination.</p>
+        <div class="triplet-grid">
+          <div>
+            <label class="label" for="agent-runtime-profile">Runtime Profile</label>
+            <select id="agent-runtime-profile"></select>
+          </div>
+          <div>
+            <label class="label" for="agent-inference-model">Inference Model</label>
+            <select id="agent-inference-model"></select>
+          </div>
+          <div>
+            <label class="label" for="agent-embedding-model">Embedding Model</label>
+            <select id="agent-embedding-model"></select>
+          </div>
+        </div>
+        <div id="agent-runtime-message" class="tiny" style="margin-top:10px;">Loading runtime catalog...</div>
 
         <div class="controls">
           <button id="start-agent" class="primary">Start Agent</button>
-          <button id="rebuild-index" class="secondary">Rebuild Cache</button>
+          <button id="rebuild-index" class="secondary">Rebuild Cache For Embeddings</button>
           <a class="linkbtn secondary" href="/ui/compliance">Assess Document</a>
           <a class="linkbtn secondary" href="/ui/reviews" target="_blank" rel="noreferrer">Review Dashboard</a>
           <a class="linkbtn secondary" href="/api/docs" target="_blank" rel="noreferrer">API</a>
         </div>
 
+        <div id="resource-warning" class="warning" style="display:none;"></div>
         <div id="agent-message" class="out muted">No agent started yet.</div>
         <div id="selected-agent-box" class="out mono" style="display:none;"></div>
 
@@ -375,10 +421,11 @@
         </section>
 
         <section class="panel">
-          <h3>Dashboard</h3>
+          <h3>Capacity</h3>
           <div class="kv">
             <div class="kv-row"><span>Pending reviews</span><strong id="pending-reviews">0</strong></div>
             <div class="kv-row"><span>Active agents</span><strong id="active-agents">0</strong></div>
+            <div class="kv-row"><span>Unique runtimes</span><strong id="unique-runtimes">0</strong></div>
             <div class="kv-row"><span>Can start another</span><strong id="capacity-flag">Checking...</strong></div>
           </div>
           <div id="capacity-note" class="tiny" style="margin-top:14px;"></div>
@@ -409,8 +456,13 @@
     const questionBox = document.getElementById("question");
     const systemBox = document.getElementById("system");
     const modelProfileBox = document.getElementById("model-profile");
+    const agentRuntimeProfileBox = document.getElementById("agent-runtime-profile");
+    const agentInferenceModelBox = document.getElementById("agent-inference-model");
+    const agentEmbeddingModelBox = document.getElementById("agent-embedding-model");
     const applyModelButton = document.getElementById("apply-model");
     const modelMessage = document.getElementById("model-message");
+    const agentRuntimeMessage = document.getElementById("agent-runtime-message");
+    const resourceWarning = document.getElementById("resource-warning");
     const agentMessage = document.getElementById("agent-message");
     const selectedAgentBox = document.getElementById("selected-agent-box");
     const responseBox = document.getElementById("response-box");
@@ -425,6 +477,7 @@
     const readinessBar = document.getElementById("readiness-bar");
     const pendingReviews = document.getElementById("pending-reviews");
     const activeAgents = document.getElementById("active-agents");
+    const uniqueRuntimes = document.getElementById("unique-runtimes");
     const capacityFlag = document.getElementById("capacity-flag");
     const capacityNote = document.getElementById("capacity-note");
     const indexBox = document.getElementById("index-box");
@@ -437,9 +490,11 @@
     let currentReviewId = null;
     let currentResponseText = "";
     let currentAgents = [];
-    let currentModelProfile = null;
     let refreshHandle = null;
     let refreshSeconds = 5;
+    let runtimeProfiles = [];
+    let inferenceCatalog = [];
+    let embeddingCatalog = [];
 
     function setReadiness(state, detail) {
       const mapping = {
@@ -461,6 +516,14 @@
       questionBox.placeholder = enabled ? "Ask a controlled query." : "Start an agent to enable querying.";
     }
 
+    function selectedRuntimeRequest() {
+      const payload = {};
+      if (agentRuntimeProfileBox.value) payload.runtime_profile = agentRuntimeProfileBox.value;
+      if (agentInferenceModelBox.value) payload.inference_model = agentInferenceModelBox.value;
+      if (agentEmbeddingModelBox.value) payload.embedding_model = agentEmbeddingModelBox.value;
+      return payload;
+    }
+
     function syncSelectedAgent() {
       let selected = currentAgents.find((agent) => (agent.name || agent.task_id) === currentTaskId) || null;
       if (!selected) {
@@ -469,9 +532,23 @@
       }
       currentReady = Boolean(selected && selected.ready);
       if (selected) {
+        const runtime = selected.runtime || {};
         selectedAgentBox.style.display = "block";
-        selectedAgentBox.textContent = `selected_agent=${selected.name || selected.task_id}\nagent_type=${selected.agent_type}\nsystem=${selected.system || "unknown"}\nready=${selected.ready ? "true" : "false"}`;
-        setReadiness(selected.ready ? "ready" : "starting", selected.ready ? `Agent ${selected.name || selected.task_id} is ready.` : `Agent ${selected.name || selected.task_id} is starting.`);
+        selectedAgentBox.textContent = [
+          `selected_agent=${selected.name || selected.task_id}`,
+          `agent_type=${selected.agent_type}`,
+          `system=${selected.system || "unknown"}`,
+          `runtime_profile=${runtime.runtime_profile || "custom"}`,
+          `inference_model=${runtime.inference_model || "n/a"}`,
+          `embedding_model=${runtime.embedding_model || "n/a"}`,
+          `ready=${selected.ready ? "true" : "false"}`
+        ].join("\n");
+        setReadiness(
+          selected.ready ? "ready" : "starting",
+          selected.ready
+            ? `Agent ${selected.name || selected.task_id} is ready.`
+            : `Agent ${selected.name || selected.task_id} is starting.`
+        );
       } else {
         selectedAgentBox.style.display = "none";
         currentTaskId = null;
@@ -490,13 +567,16 @@
       const files = (item.source_files || []).length
         ? item.source_files.map((name) => `<div>${name}</div>`).join("")
         : "<div>No source files found yet.</div>";
+      const variants = (item.variants || []).length
+        ? item.variants.map((entry) => `<div>${entry.variant} · chunks ${entry.indexed_chunk_count ?? "?"} · ${entry.last_built_at || "never"}</div>`).join("")
+        : "<div>No embedding-specific caches built yet.</div>";
       indexBox.innerHTML = `
         <div class="list-item active">
-          <div><strong>${item.system_name}</strong><br>${item.index_exists ? "Index available" : "Index missing"}</div>
+          <div><strong>${item.system_name}</strong><br>${item.index_exists ? "Active embedding cache available" : "Active embedding cache missing"}</div>
           <div style="margin-top:10px;"><strong>Source directory</strong><br>${item.source_directory}</div>
-          <div style="margin-top:10px;"><strong>Index directory</strong><br>${item.index_directory}</div>
+          <div style="margin-top:10px;"><strong>Active embedding</strong><br>${item.embedding_model || "n/a"} (${item.embedding_variant || "n/a"})</div>
           <div style="margin-top:10px;"><strong>Indexed chunks</strong><br>${item.indexed_chunk_count ?? "unknown"}</div>
-          <div style="margin-top:10px;"><strong>Last rebuilt</strong><br>${item.last_built_at || "Never"}</div>
+          <div style="margin-top:10px;"><strong>Variants</strong><br>${variants}</div>
           <div style="margin-top:10px;"><strong>Source files</strong><br>${files}</div>
         </div>
       `;
@@ -512,10 +592,16 @@
       agentsBox.innerHTML = currentAgents.map((agent) => {
         const taskId = agent.name || agent.task_id;
         const isActive = currentTaskId === taskId;
+        const runtime = agent.runtime || {};
         return `
           <div class="list-item ${isActive ? "active" : ""}">
             <div class="item-head">
-              <div><strong>${taskId}</strong><br>${agent.agent_type} · ${agent.system || "unknown system"} · ${agent.ready ? "ready" : "starting"}</div>
+              <div>
+                <strong>${taskId}</strong><br>
+                ${agent.agent_type} · ${agent.system || "unknown system"} · ${agent.ready ? "ready" : "starting"}<br>
+                ${runtime.runtime_profile || "custom"} · ${runtime.inference_model || "n/a"}<br>
+                ${runtime.embedding_model || "n/a"}
+              </div>
               <div class="status-chip">${isActive ? "Selected" : (agent.ready ? "Ready" : "Starting")}</div>
             </div>
             <div class="item-actions">
@@ -527,22 +613,45 @@
       }).join("");
     }
 
-    function renderModelProfiles(modelProfiles, models) {
-      const activeProfile = modelProfiles?.active_profile || models?.active_profile || "custom";
-      currentModelProfile = activeProfile;
+    function renderDefaultProfiles(modelProfiles) {
       const items = modelProfiles?.profiles || [];
+      const activeProfile = modelProfiles?.active_profile || "custom";
       if (!items.length) {
         modelProfileBox.innerHTML = `<option value="">No profiles available</option>`;
-        modelMessage.textContent = "No model profiles were found in YAML.";
+        modelMessage.textContent = "No default model profiles were found in YAML.";
         applyModelButton.disabled = true;
         return;
       }
       modelProfileBox.innerHTML = items.map((item) => `
         <option value="${item.name}" ${item.name === activeProfile ? "selected" : ""}>${item.label} (${item.config.llm_model})</option>
       `).join("");
-      applyModelButton.disabled = false;
       const selected = items.find((item) => item.name === activeProfile) || items[0];
       modelMessage.textContent = `${selected.label}: ${selected.description || "Ready to apply."}`;
+      applyModelButton.disabled = false;
+    }
+
+    function renderAgentRuntimeControls(modelProfiles) {
+      runtimeProfiles = modelProfiles?.runtime_profiles || [];
+      inferenceCatalog = modelProfiles?.inference_catalog || [];
+      embeddingCatalog = modelProfiles?.embedding_catalog || [];
+
+      agentRuntimeProfileBox.innerHTML = [`<option value="">Use YAML assignment</option>`]
+        .concat(runtimeProfiles.map((item) => `<option value="${item.name}">${item.label || item.name}</option>`))
+        .join("");
+
+      agentInferenceModelBox.innerHTML = inferenceCatalog.map((item) => `
+        <option value="${item.name}">${item.label || item.name} (${item.huggingface_id})</option>
+      `).join("");
+
+      agentEmbeddingModelBox.innerHTML = embeddingCatalog.map((item) => `
+        <option value="${item.name}">${item.label || item.name} (${item.huggingface_id})</option>
+      `).join("");
+
+      const sharedProfile = runtimeProfiles.find((item) => item.name === "shared-compact") || runtimeProfiles[0];
+      if (sharedProfile) {
+        agentRuntimeProfileBox.value = sharedProfile.name;
+      }
+      agentRuntimeMessage.textContent = "Start agents with a named runtime profile, or override the exact inference and embedding models directly.";
     }
 
     function updateRefresh(seconds) {
@@ -562,15 +671,19 @@
         routesBox.innerHTML = `<div class="list-item"><strong>No controlled queries yet.</strong></div>`;
         return;
       }
-      routesBox.innerHTML = routes.map((route) => `
-        <div class="list-item">
-          <div><strong>${route.status}</strong><br>${route.question_preview || route.question || ""}</div>
-          <div style="margin-top:10px;">Agent: ${route.agent_task_id || "direct"}</div>
-          <div>Trace: ${route.trace_id || "n/a"}</div>
-          <div>Review: ${route.review_id || "n/a"}</div>
-          <div>${route.timestamp || ""}</div>
-        </div>
-      `).join("");
+      routesBox.innerHTML = routes.map((route) => {
+        const runtime = route.runtime || {};
+        return `
+          <div class="list-item">
+            <div><strong>${route.status}</strong><br>${route.question_preview || route.question || ""}</div>
+            <div style="margin-top:10px;">Agent: ${route.agent_task_id || "direct"}</div>
+            <div>Runtime: ${runtime.runtime_profile || "custom"} · ${runtime.inference_model || "n/a"}</div>
+            <div>Trace: ${route.trace_id || "n/a"}</div>
+            <div>Review: ${route.review_id || "n/a"}</div>
+            <div>${route.timestamp || ""}</div>
+          </div>
+        `;
+      }).join("");
     }
 
     async function refreshDashboard() {
@@ -578,17 +691,26 @@
         const res = await fetch("/platform/dashboard");
         const json = await res.json();
         updateRefresh(json.refresh?.telemetry_refresh_seconds || 5);
-        renderModelProfiles(json.configuration?.model_profiles, json.models || {});
+        renderDefaultProfiles(json.configuration?.model_profiles);
+        renderAgentRuntimeControls(json.configuration?.model_profiles);
         pendingReviews.textContent = String(json.pending_reviews ?? 0);
         activeAgents.textContent = String((json.orchestrator?.active_agents || []).length);
+        uniqueRuntimes.textContent = String(json.orchestrator?.capacity?.unique_runtime_count ?? 0);
         renderIndexes(json.indexes || []);
         renderAgents(json.orchestrator || {});
         renderRoutes(json.recent_routes || []);
         const capacity = json.orchestrator?.capacity || {};
         capacityFlag.textContent = capacity.can_start_another ? "Yes" : "No";
         capacityNote.textContent = `${capacity.reason || ""} · free ${capacity.available_memory_gb ?? "?"} GB / ${capacity.total_memory_gb ?? "?"} GB · CPU ${capacity.cpu_percent ?? "?"}% · recommended max ${capacity.recommended_max_agents ?? "?"}`;
+        if (capacity.recommendation) {
+          resourceWarning.style.display = "block";
+          resourceWarning.textContent = capacity.recommendation;
+        } else {
+          resourceWarning.style.display = "none";
+        }
       } catch (error) {
         modelMessage.textContent = `Model profiles unavailable: ${error.message}`;
+        agentRuntimeMessage.textContent = `Runtime catalog unavailable: ${error.message}`;
         capacityFlag.textContent = "Unavailable";
         capacityNote.textContent = `Dashboard unavailable: ${error.message}`;
         indexBox.innerHTML = `<div class="list-item"><strong>Index status unavailable.</strong></div>`;
@@ -603,7 +725,7 @@
         return;
       }
       applyModelButton.disabled = true;
-      modelMessage.textContent = "Applying model profile...";
+      modelMessage.textContent = "Applying default model profile...";
       try {
         const res = await fetch("/platform/models/apply", {
           method: "POST",
@@ -614,8 +736,7 @@
         if (!res.ok) {
           throw new Error(json.detail || "Failed to apply model profile.");
         }
-        currentModelProfile = json.active_profile || profile;
-        modelMessage.textContent = json.message || "Model profile updated.";
+        modelMessage.textContent = json.message || "Default model profile updated.";
         await refreshDashboard();
       } catch (error) {
         modelMessage.textContent = error.message;
@@ -644,7 +765,8 @@
             system: systemBox.value.trim() || "TestSystem",
             agent_type: "retriever",
             name_prefix: "agent",
-            tenant: "default"
+            tenant: "default",
+            ...selectedRuntimeRequest()
           })
         });
         const json = await res.json();
@@ -653,14 +775,14 @@
         }
         currentTaskId = json.task_id;
         currentReady = Boolean(json.ready);
-        agentMessage.textContent = `Started ${json.name || json.task_id}.`;
+        agentMessage.textContent = `Started ${json.name || json.task_id}. Runtime: ${(json.runtime || {}).runtime_profile || "custom"} · ${(json.runtime || {}).inference_model || "n/a"} · ${(json.runtime || {}).embedding_model || "n/a"}.`;
         await refreshDashboard();
       } catch (error) {
         currentTaskId = null;
         currentReady = false;
         setQueryEnabled(false);
         setReadiness("blocked", error.message);
-        agentMessage.textContent = `${error.message}\n\nSee the Runtime panel on the right for PID, memory, and recent logs.`;
+        agentMessage.textContent = `${error.message}\n\nSee the Runtime panel for PID, memory, and recent logs.`;
       } finally {
         startAgentButton.disabled = false;
       }
@@ -672,16 +794,18 @@
       agentMessage.textContent = `Rebuilding retrieval cache for ${system}...`;
       try {
         const res = await fetch(`/platform/indexes/${encodeURIComponent(system)}/rebuild`, {
-          method: "POST"
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(selectedRuntimeRequest())
         });
         const json = await res.json();
         if (!res.ok) {
           throw new Error(json.detail || "Index rebuild failed.");
         }
-        agentMessage.textContent = `Rebuilt cache for ${system}. Indexed chunks: ${json.report?.num_chunks ?? "unknown"}.`;
+        agentMessage.textContent = `Rebuilt cache for ${system}. Embedding model: ${json.report?.embedding_model || "n/a"}. Indexed chunks: ${json.report?.num_chunks ?? "unknown"}.`;
         await refreshDashboard();
       } catch (error) {
-        agentMessage.textContent = `${error.message}\n\nSee the Runtime panel on the right for recent logs and diagnostics.`;
+        agentMessage.textContent = `${error.message}\n\nSee the Runtime panel for recent logs and diagnostics.`;
       } finally {
         rebuildIndexButton.disabled = false;
       }
@@ -706,7 +830,7 @@
             task_id: currentTaskId,
             system: systemBox.value.trim() || "TestSystem",
             question,
-            context: ""
+            context: "",
           })
         });
         const json = await res.json();
@@ -716,19 +840,30 @@
         currentTrace = json.trace_id || null;
         currentReviewId = json.review_id || null;
         currentResponseText = json.answer || json.response_preview || "";
+        const runtime = json.runtime || {};
         responseBox.textContent = json.status === "pending_review"
-          ? `Review required.\n\n${json.response_preview || "Preview unavailable."}\n\nOpen the review dashboard to sign off.`
+          ? `Review required.\n\n${json.response_preview || "Preview unavailable."}\n\nUse /review/${json.review_id}/signoff or open the review dashboard to approve or reject.`
           : (json.answer || "No answer returned.");
         traceBox.style.display = "block";
-        traceBox.textContent = `status=${json.status || "unknown"}\ntrace_id=${json.trace_id || "n/a"}\nreview_id=${json.review_id || "n/a"}\nagent=${json.agent_task_id || currentTaskId}`;
+        traceBox.textContent = [
+          `status=${json.status || "unknown"}`,
+          `trace_id=${json.trace_id || "n/a"}`,
+          `review_id=${json.review_id || "n/a"}`,
+          `agent=${json.agent_task_id || currentTaskId}`,
+          `runtime_profile=${runtime.runtime_profile || "custom"}`,
+          `inference_model=${runtime.inference_model || "n/a"}`,
+          `embedding_model=${runtime.embedding_model || "n/a"}`
+        ].join("\n");
         qualityBox.style.display = "flex";
         goodButton.disabled = false;
         badButton.disabled = false;
         qualityNote.style.display = "block";
-        qualityNote.textContent = json.status === "pending_review" ? "Rate the generated draft after review." : "Rate the response quality.";
+        qualityNote.textContent = json.status === "pending_review"
+          ? "Rate the generated draft after signoff."
+          : "Rate the response quality.";
         await refreshDashboard();
       } catch (error) {
-        responseBox.textContent = `${error.message}\n\nSee the Runtime panel on the right for recent logs and diagnostics.`;
+        responseBox.textContent = `${error.message}\n\nSee the Runtime panel for recent logs and diagnostics.`;
       } finally {
         submitQueryButton.disabled = false;
       }
@@ -781,7 +916,7 @@
         agentMessage.textContent = `Stopped ${json.task_id || taskId}.`;
         await refreshDashboard();
       } catch (error) {
-        agentMessage.textContent = `${error.message}\n\nSee the Runtime panel on the right for recent logs and diagnostics.`;
+        agentMessage.textContent = `${error.message}\n\nSee the Runtime panel for recent logs and diagnostics.`;
       }
     }
 

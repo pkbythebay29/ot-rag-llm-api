@@ -22,13 +22,23 @@ class GenerationResult:
 
 class Retriever(ABC):
     @abstractmethod
-    def retrieve(self, system_name: str, question: str) -> RetrievalResult:
+    def retrieve(
+        self,
+        system_name: str,
+        question: str,
+        model_selection: dict[str, Any] | None = None,
+    ) -> RetrievalResult:
         raise NotImplementedError
 
 
 class Generator(ABC):
     @abstractmethod
-    def generate(self, question: str, context: str) -> GenerationResult:
+    def generate(
+        self,
+        question: str,
+        context: str,
+        model_selection: dict[str, Any] | None = None,
+    ) -> GenerationResult:
         raise NotImplementedError
 
 

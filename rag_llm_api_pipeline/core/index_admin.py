@@ -6,6 +6,10 @@ from datetime import datetime, timezone
 from typing import Any
 
 from rag_llm_api_pipeline.config_loader import load_config
+from rag_llm_api_pipeline.core.model_selection import (
+    embedding_index_slug,
+    resolve_runtime_selection,
+)
 from rag_llm_api_pipeline.core.system_assets import find_asset, get_assets
 
 
@@ -59,23 +63,84 @@ def _chunk_count(texts_path: str) -> int | None:
         return None
 
 
+def _artifact_paths(
+    index_dir: str, system_name: str, runtime: dict[str, Any]
+) -> dict[str, str]:
+    variant = embedding_index_slug(runtime)
+    base = f"{system_name}--{variant}"
+    return {
+        "faiss": os.path.join(index_dir, f"{base}.faiss"),
+        "texts": os.path.join(index_dir, f"{base}_texts.pkl"),
+        "meta": os.path.join(index_dir, f"{base}_meta.pkl"),
+        "normflag": os.path.join(index_dir, f"{base}.normflag"),
+        "variant": variant,
+    }
+
+
+def _list_index_variants(index_dir: str, system_name: str) -> list[dict[str, Any]]:
+    prefix = f"{system_name}--"
+    variants: list[dict[str, Any]] = []
+    if not os.path.isdir(index_dir):
+        return variants
+
+    for name in sorted(os.listdir(index_dir)):
+        if not name.startswith(prefix) or not name.endswith(".faiss"):
+            continue
+        variant = name[len(prefix) : -len(".faiss")]
+        faiss_path = os.path.join(index_dir, name)
+        texts_path = os.path.join(index_dir, f"{system_name}--{variant}_texts.pkl")
+        meta_path = os.path.join(index_dir, f"{system_name}--{variant}_meta.pkl")
+        normflag_path = os.path.join(index_dir, f"{system_name}--{variant}.normflag")
+        variants.append(
+            {
+                "variant": variant,
+                "index_exists": all(
+                    os.path.exists(path)
+                    for path in (faiss_path, texts_path, meta_path, normflag_path)
+                ),
+                "indexed_chunk_count": _chunk_count(texts_path),
+                "last_built_at": _utc_iso(os.path.getmtime(faiss_path)),
+                "index_files": {
+                    "faiss": os.path.abspath(faiss_path),
+                    "texts": os.path.abspath(texts_path),
+                    "meta": os.path.abspath(meta_path),
+                    "normflag": os.path.abspath(normflag_path),
+                },
+            }
+        )
+    return variants
+
+
 def get_index_status(
-    system_name: str, config: dict[str, Any] | None = None
+    system_name: str,
+    config: dict[str, Any] | None = None,
+    model_selection: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     cfg = config or load_config() or {}
     index_dir = get_index_dir(cfg)
     data_dir = get_system_data_dir(system_name, cfg)
     source_files = _list_source_files(system_name, cfg)
+    runtime = resolve_runtime_selection(
+        cfg,
+        system_name=system_name,
+        overrides=model_selection,
+    )
+    artifacts = _artifact_paths(index_dir, system_name, runtime)
 
-    faiss_path = os.path.join(index_dir, f"{system_name}.faiss")
-    texts_path = os.path.join(index_dir, f"{system_name}_texts.pkl")
-    meta_path = os.path.join(index_dir, f"{system_name}_meta.pkl")
-    normflag_path = os.path.join(index_dir, f"{system_name}.normflag")
     index_exists = all(
         os.path.exists(path)
-        for path in (faiss_path, texts_path, meta_path, normflag_path)
+        for path in (
+            artifacts["faiss"],
+            artifacts["texts"],
+            artifacts["meta"],
+            artifacts["normflag"],
+        )
     )
-    last_built_ts = os.path.getmtime(faiss_path) if os.path.exists(faiss_path) else None
+    last_built_ts = (
+        os.path.getmtime(artifacts["faiss"])
+        if os.path.exists(artifacts["faiss"])
+        else None
+    )
 
     return {
         "system_name": system_name,
@@ -84,14 +149,17 @@ def get_index_status(
         "source_files": source_files,
         "source_file_count": len(source_files),
         "index_exists": index_exists,
+        "embedding_model": runtime["embedding_model"],
+        "embedding_variant": artifacts["variant"],
         "index_files": {
-            "faiss": os.path.abspath(faiss_path),
-            "texts": os.path.abspath(texts_path),
-            "meta": os.path.abspath(meta_path),
-            "normflag": os.path.abspath(normflag_path),
+            "faiss": os.path.abspath(artifacts["faiss"]),
+            "texts": os.path.abspath(artifacts["texts"]),
+            "meta": os.path.abspath(artifacts["meta"]),
+            "normflag": os.path.abspath(artifacts["normflag"]),
         },
-        "indexed_chunk_count": _chunk_count(texts_path),
+        "indexed_chunk_count": _chunk_count(artifacts["texts"]),
         "last_built_at": _utc_iso(last_built_ts),
+        "variants": _list_index_variants(index_dir, system_name),
     }
 
 

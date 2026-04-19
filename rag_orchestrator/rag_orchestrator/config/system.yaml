@@ -1,19 +1,39 @@
 # ===============================
-# krionis-platform — system.yaml
+# krionis-orchestrator - bridge defaults
 # ===============================
 
 assets:
   - name: TestSystem
-    docs: []  # Auto-Index all files in settings.data_dir
+    docs: []
 
 models:
-  llm_model: Qwen/Qwen3-4B-Instruct-2507
-  device: auto
+  active_profile: cpu-compact
+  llm_model: Qwen/Qwen2.5-0.5B-Instruct
+  device: cpu
   model_precision: auto
-  use_harmony: false
-  memory_strategy:
-    use_expandable_segments: true
-    max_memory_gb: null
+  quantization_backend: dynamic-int8
+  low_cpu_mem_usage: true
+  runtime_profiles:
+    shared-compact:
+      label: Shared Compact
+      description: Reuse one compact inference and embedding runtime across agents.
+      model_profile: cpu-compact
+      inference_model: qwen-0.5b-instruct
+      embedding_model: minilm-l6
+    balanced-search:
+      label: Balanced Search
+      description: Balanced inference with a stronger embedding model.
+      model_profile: cpu-balanced
+      inference_model: qwen-1.5b-instruct
+      embedding_model: bge-small-en-v1.5
+  agent_assignments:
+    default:
+      runtime_profile: shared-compact
+    by_agent_type:
+      retriever:
+        runtime_profile: shared-compact
+      regulatory:
+        runtime_profile: balanced-search
 
 retriever:
   embedding_model: sentence-transformers/all-MiniLM-L6-v2
@@ -27,111 +47,15 @@ llm:
   max_input_tokens: 3072
   repetition_penalty: 1.05
   no_repeat_ngram_size: 3
-  stop_sequences: 
-    - "Final answer"
-    - "Corrected answer"
-    - "Correction:"
-    - "Explanation:"
-    - "Answer:"
-
-
-  preset: baseline  # baseline | beam | explore | drafts
-
+  stop_sequences:
+    - "\n"
+  preset: baseline
   presets:
     baseline:
       do_sample: false
       num_beams: 1
-    beam:
-      do_sample: false
-      num_beams: 6
-      length_penalty: 1.1
-      early_stopping: true
-    explore:
-      do_sample: true
-      num_beams: 1
-      temperature: 0.7
-      top_p: 0.9
-      # top_k: 50
-    drafts:
-      do_sample: true
-      num_beams: 4
-      temperature: 0.8
-      top_p: 0.92
-      num_return_sequences: 3
-
   prompt_template: |
     You are a precise, concise assistant for industrial systems.
-
-   # ===============================
-# krionis-platform — system.yaml
-# ===============================
-
-assets:
-  - name: TestSystem
-    docs: []  # Auto-Index all files in settings.data_dir
-
-models:
-  llm_model: Qwen/Qwen3-4B-Instruct-2507
-  device: auto
-  model_precision: auto
-  use_harmony: false
-  memory_strategy:
-    use_expandable_segments: true
-    max_memory_gb: null
-
-retriever:
-  embedding_model: sentence-transformers/all-MiniLM-L6-v2
-  top_k: 5
-  index_dir: indices
-  encode_batch_size: 32
-  normalize_embeddings: false
-
-llm:
-  max_new_tokens: 256
-  max_input_tokens: 3072
-  repetition_penalty: 1.05
-  no_repeat_ngram_size: 3
-  stop_sequences: ["\n"]
-
-  preset: baseline  # baseline | beam | explore | drafts
-
-  presets:
-    baseline:
-      do_sample: false
-      num_beams: 1
-    beam:
-      do_sample: false
-      num_beams: 6
-      length_penalty: 1.1
-      early_stopping: true
-    explore:
-      do_sample: true
-      num_beams: 1
-      temperature: 0.7
-      top_p: 0.9
-      # top_k: 50
-    drafts:
-      do_sample: true
-      num_beams: 4
-      temperature: 0.8
-      top_p: 0.92
-      num_return_sequences: 3
-
-  prompt_template: |
-    You are a precise, concise assistant for industrial systems.
-
-    Strict rules:
-    - Use the provided context to answer.
-    - If the answer is not in the context, reply exactly with: I don't know.
-    - Do not add any explanation, apology, or commentary.
-    - Provide a single, final answer. Do not produce multiple attempts.
-    - Do not mention the words "context", "question", "instructions", or your own limitations.
-    - Do not include word counts or parenthetical notes.
-    - Match requested formatting (e.g., bullet list, exactly N words) when specified; otherwise, write one clear paragraph.
-    - Do not explain why you don't know.
-    - Do not say "Final answer" or repeat yourself.
-    - Do not rephrase your answer.
-    - Do not output anything after the answer.
 
     Question: {question}
 
@@ -140,13 +64,13 @@ llm:
 
     Answer:
 
-settings:
-  data_dir: data/manuals
-  index_dir: indices
-  force_rebuild_index: false
-  use_cpu: false
-
-  show_chunks: true
-  show_query_time: true
-  show_token_speed: true
-  show_chunk_timing: true
+orchestrator:
+  batcher:
+    max_batch: 8
+    max_latency_ms: 5
+    max_queue: 1024
+  gatekeeper:
+    default_tenant:
+      rps: 20.0
+      burst: 40
+      timeout_s: 30.0

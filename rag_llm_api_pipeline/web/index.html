@@ -82,8 +82,8 @@
   <div class="wrap">
     <div class="card">
       <h1>Krionis HITL RAG</h1>
-      <p class="sub">Ask. Retrieve. Review when needed. Every result now carries a traceable status.</p>
-      <div class="guide"><strong>HITL control point:</strong> responses containing dosage, treatment, compliance, GMP, validation, or unusually long outputs are routed into mandatory review. Open <code>/ui/reviews</code> to approve or reject them with an API key. Launch the API with <code>uvicorn rag_llm_api_pipeline.api.server:app --host 127.0.0.1 --port 8000</code>.</div>
+      <p class="sub">Ask. Retrieve. Review when needed. The API now supports Hugging Face model selection, agent-specific embeddings, and traceable signoff.</p>
+      <div class="guide"><strong>HITL control point:</strong> flagged responses are routed into mandatory review. Open <code>/ui/reviews</code> to approve or reject them with an API key, or use <code>GET /review/{review_id}/signoff</code> to fetch ready-to-run signoff examples. Launch the API with <code>uvicorn rag_llm_api_pipeline.api.server:app --host 127.0.0.1 --port 8000</code>.</div>
 
       <div class="row">
         <div>
@@ -159,7 +159,9 @@
       auditBox.textContent =
         `Status: ${json.status || "unknown"}\n` +
         `Trace ID: ${json.trace_id || "n/a"}\n` +
-        `Review ID: ${json.review_id || "n/a"}`;
+        `Review ID: ${json.review_id || "n/a"}\n` +
+        `Inference Model: ${json.runtime?.inference_model || "default"}\n` +
+        `Embedding Model: ${json.runtime?.embedding_model || "default"}`;
 
       // Stats
       if(json.stats){

@@ -10,6 +10,15 @@ from pydantic import BaseModel, Field
 from ._state import manager
 from ..agents.base import AgentSpec
 
+try:
+    from rag_llm_api_pipeline.core.model_selection import (
+        resolve_runtime_selection,
+        summarize_runtime,
+    )
+except Exception:  # pragma: no cover - orchestrator can run without pipeline package
+    resolve_runtime_selection = None
+    summarize_runtime = None
+
 router = APIRouter(prefix="/agents", tags=["agents"])
 
 
@@ -24,6 +33,15 @@ class BulkCreateRequest(BaseModel):
         1, ge=1, le=64, description="How many copies of each agent to start"
     )
     tenant: Optional[str] = Field("default", description="Multi-tenant label")
+    runtime_profile: Optional[str] = Field(
+        None, description="Optional runtime profile for all started agents."
+    )
+    inference_model: Optional[str] = Field(
+        None, description="Optional inference model key or Hugging Face identifier."
+    )
+    embedding_model: Optional[str] = Field(
+        None, description="Optional embedding model key or Hugging Face identifier."
+    )
 
 
 class StartedItem(BaseModel):
@@ -32,6 +50,7 @@ class StartedItem(BaseModel):
     ready: bool = False
     name: Optional[str] = None
     created_at: float
+    runtime: Optional[dict[str, Any]] = None
 
 
 class BulkCreateResponse(BaseModel):
@@ -44,6 +63,7 @@ class AgentStatus(BaseModel):
     ready: bool
     name: Optional[str]
     created_at: float
+    runtime: Optional[dict[str, Any]] = None
 
 
 class AgentsStatusResponse(BaseModel):
@@ -116,10 +136,21 @@ async def bulk_create(inp: BulkCreateRequest):
     for slug in inp.agents:
         for i in range(inp.copies):
             try:
+                runtime = {}
+                if resolve_runtime_selection is not None:
+                    runtime = resolve_runtime_selection(
+                        runtime_profile=inp.runtime_profile,
+                        inference_model=inp.inference_model,
+                        embedding_model=inp.embedding_model,
+                        agent_type=slug,
+                        agent_name=f"{inp.name_prefix}-{slug}-{i}",
+                        system_name=inp.system,
+                    )
                 spec = AgentSpec(
                     name=f"{inp.name_prefix}-{slug}-{i}",
                     system=inp.system,
                     tenant=inp.tenant or "default",
+                    config=runtime,
                 )
                 task = await manager.create(slug, spec)
             except KeyError:
@@ -145,6 +176,11 @@ async def bulk_create(inp: BulkCreateRequest):
                     ready=True,  # optimistic ready for smooth UX
                     name=spec.name,
                     created_at=_task_created(task),
+                    runtime=(
+                        summarize_runtime(runtime)
+                        if runtime and summarize_runtime is not None
+                        else runtime
+                    ),
                 )
             )
 
@@ -188,6 +224,15 @@ async def agents_status():
                     ready=_task_ready(task),
                     name=_task_name(task),
                     created_at=_task_created(task),
+                    runtime=(
+                        summarize_runtime(
+                            getattr(getattr(task, "spec", None), "config", {})
+                        )
+                        if summarize_runtime is not None
+                        else dict(
+                            getattr(getattr(task, "spec", None), "config", {}) or {}
+                        )
+                    ),
                 )
             )
     return AgentsStatusResponse(agents=agents)

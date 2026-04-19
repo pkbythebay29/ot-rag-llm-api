@@ -14,6 +14,7 @@ def test_normal_query_is_auto_approved(app_client):
     assert body["status"] == "approved"
     assert "answer" in body
     assert body["sources"] == ["Chunk 1"]
+    assert "runtime" in body
 
     audit_lines = (
         app_client["audit_log"].read_text(encoding="utf-8").strip().splitlines()

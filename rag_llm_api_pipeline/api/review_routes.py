@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel
 
 from rag_llm_api_pipeline.core import audit, feedback
 from rag_llm_api_pipeline.core.compliance import infer_assessment_status
-from rag_llm_api_pipeline.core.hitl import utc_now_iso
+from rag_llm_api_pipeline.core.hitl import (
+    create_signoff_payload_examples,
+    utc_now_iso,
+)
 from rag_llm_api_pipeline.core.security import get_user_id, validate_api_key_header
 from rag_llm_api_pipeline.db import compliance_store, review_store
 
@@ -77,7 +80,35 @@ def _sync_compliance_assessment(item: dict[str, Any]) -> None:
 
 @router.get("/pending")
 def get_pending_reviews(_: str = Depends(validate_api_key_header)) -> dict[str, Any]:
-    return {"items": review_store.get_pending_reviews()}
+    items = []
+    for item in review_store.get_pending_reviews():
+        payload = dict(item)
+        payload["signoff_path"] = f"/review/{item['id']}/signoff"
+        items.append(payload)
+    return {"items": items}
+
+
+@router.get("/{review_id}/signoff")
+def get_review_signoff(
+    review_id: str,
+    request: Request,
+    _: str = Depends(validate_api_key_header),
+) -> dict[str, Any]:
+    item = _get_review_or_404(review_id)
+    base_url = str(request.base_url).rstrip("/")
+    return {
+        "review_id": review_id,
+        "status": item.get("status"),
+        "instructions": (
+            "Approve by posting the reviewer notes and optional edited final response. "
+            "Reject by posting reviewer notes that explain why the draft cannot be released."
+        ),
+        "signoff_examples": create_signoff_payload_examples(
+            review_id,
+            base_url=base_url,
+            final_response=item.get("response") or "Approved response text.",
+        ),
+    }
 
 
 @router.post("/{review_id}/approve")

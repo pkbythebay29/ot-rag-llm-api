@@ -12,6 +12,10 @@ from rag_llm_api_pipeline.core.hitl import (
     requires_human_review,
     utc_now_iso,
 )
+from rag_llm_api_pipeline.core.model_selection import (
+    resolve_runtime_selection,
+    summarize_runtime,
+)
 from rag_llm_api_pipeline.core.orchestrator import get_orchestrator
 from rag_llm_api_pipeline.core.platform_state import record_query_route
 from rag_llm_api_pipeline.core.query_worker import run_query_in_worker
@@ -72,6 +76,38 @@ def execute_query(system_id: str, question: str) -> dict[str, Any]:
     return normalize_result(run_query_in_worker(system_id, question))
 
 
+def _resolve_runtime(
+    system_id: str, runtime_selection: dict[str, Any] | None
+) -> dict[str, Any]:
+    return resolve_runtime_selection(
+        system_name=system_id,
+        overrides=runtime_selection,
+    )
+
+
+def execute_query_with_runtime(
+    system_id: str,
+    question: str,
+    runtime_selection: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    resolved_runtime = _resolve_runtime(system_id, runtime_selection)
+    if os.getenv("KRIONIS_DISABLE_QUERY_WORKER", "").strip() == "1":
+        return normalize_result(
+            get_orchestrator().run_query(
+                system_name=system_id,
+                question=question,
+                model_selection=resolved_runtime,
+            )
+        )
+    return normalize_result(
+        run_query_in_worker(
+            system_id,
+            question,
+            runtime_selection=resolved_runtime,
+        )
+    )
+
+
 def build_controlled_response(
     *,
     system_id: str,
@@ -85,9 +121,11 @@ def build_controlled_response(
     extra_response_fields: dict[str, Any] | None = None,
     extra_route_fields: dict[str, Any] | None = None,
     audit_context: dict[str, Any] | None = None,
+    runtime_selection: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     cfg = load_config()
-    model_version, prompt_version = get_version_placeholders()
+    resolved_runtime = _resolve_runtime(system_id, runtime_selection)
+    model_version, prompt_version = get_version_placeholders(resolved_runtime)
     normalized = normalize_result(result)
     answer = str(
         normalized.get("answer")
@@ -100,6 +138,7 @@ def build_controlled_response(
     retrieved_documents = list(normalized.get("retrieved_documents") or [])
     formatted_stats = format_stats(stats, cfg)
     trace = build_trace(trace_id, "evaluated", formatted_stats)
+    trace["runtime"] = summarize_runtime(resolved_runtime)
     trace["steps"].insert(
         1,
         {
@@ -117,11 +156,13 @@ def build_controlled_response(
         "question": question,
         "question_preview": question[:120],
         "agent_task_id": agent_task_id,
+        "runtime": summarize_runtime(resolved_runtime),
         **(extra_route_fields or {}),
     }
     audit_fields = {"route_name": route_name, **(audit_context or {})}
     if agent_task_id:
         audit_fields["agent_task_id"] = agent_task_id
+    audit_fields["runtime"] = summarize_runtime(resolved_runtime)
 
     if requires_human_review(question, answer):
         review_item = create_review_item(
@@ -132,6 +173,7 @@ def build_controlled_response(
             trace_id=trace_id,
             retrieved_documents=retrieved_documents,
             response_preview=answer[: get_response_preview_chars()],
+            runtime_selection=resolved_runtime,
         )
         if agent_task_id:
             review_item["agent_task_id"] = agent_task_id
@@ -163,6 +205,7 @@ def build_controlled_response(
             "system": system_id,
             "question": question,
             "response_preview": review_item["response_preview"],
+            "runtime": summarize_runtime(resolved_runtime),
         }
         if agent_task_id:
             response["agent_task_id"] = agent_task_id
@@ -204,6 +247,7 @@ def build_controlled_response(
         "question": question,
         "answer": answer,
         "sources": sources,
+        "runtime": summarize_runtime(resolved_runtime),
     }
     if agent_task_id:
         response["agent_task_id"] = agent_task_id

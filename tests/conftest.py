@@ -6,7 +6,12 @@ from fastapi.testclient import TestClient
 
 
 class FakeOrchestrator:
-    def run_query(self, system_name: str, question: str) -> dict:
+    def run_query(
+        self,
+        system_name: str,
+        question: str,
+        model_selection: dict | None = None,
+    ) -> dict:
         normalized = question.lower()
         if "compliance" in normalized:
             answer = "Compliance gap detected: validation evidence is missing."
@@ -29,6 +34,7 @@ class FakeOrchestrator:
                 "retrieval": {"faiss_search_sec": 0.01},
                 "chunks_meta": [{"file": "manual.txt", "rank": 1}],
             },
+            "runtime": dict(model_selection or {}),
         }
 
 

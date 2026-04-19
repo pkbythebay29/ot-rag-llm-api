@@ -63,6 +63,8 @@ class AgentManager:
                     "type": a.agent_type,
                     "name": a.spec.name,
                     "tenant": a.spec.tenant,
+                    "system": a.spec.system,
+                    "config": dict(a.spec.config or {}),
                 }
                 for a in self._agents.values()
             ]

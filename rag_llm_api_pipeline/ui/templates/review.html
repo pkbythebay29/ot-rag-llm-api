@@ -123,6 +123,18 @@
       margin-top: 14px;
     }
 
+    .signoff {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid #e8dece;
+      background: #f8f3ea;
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.9rem;
+      display: none;
+    }
+
     button {
       border: 0;
       border-radius: 999px;
@@ -208,7 +220,9 @@
             <div class="actions">
               <button type="button" onclick="approveReview('{{ item.id }}')">Approve</button>
               <button type="button" class="danger" onclick="rejectReview('{{ item.id }}')">Reject</button>
+              <button type="button" class="secondary" onclick="loadSignoff('{{ item.id }}')">Show Signoff API</button>
             </div>
+            <div class="signoff"></div>
           </article>
         {% endfor %}
       {% else %}
@@ -266,7 +280,9 @@
           <div class="actions">
             <button type="button" onclick="approveReview('${item.id}')">Approve</button>
             <button type="button" class="danger" onclick="rejectReview('${item.id}')">Reject</button>
+            <button type="button" class="secondary" onclick="loadSignoff('${item.id}')">Show Signoff API</button>
           </div>
+          <div class="signoff"></div>
         </article>
       `).join("");
     }
@@ -354,6 +370,38 @@
 
       setStatus(`Rejected ${reviewId}.`);
       await loadPending();
+    }
+
+    async function loadSignoff(reviewId) {
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        setStatus("Enter the review API key before loading signoff instructions.", true);
+        return;
+      }
+
+      const card = cardFor(reviewId);
+      const target = card.querySelector(".signoff");
+      target.style.display = "block";
+      target.textContent = "Loading signoff instructions...";
+
+      const response = await fetch(`/review/${reviewId}/signoff`, {
+        headers: { "x-api-key": apiKey }
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        target.textContent = data.detail || "Unable to load signoff instructions.";
+        return;
+      }
+
+      target.textContent = [
+        data.instructions || "",
+        "",
+        "Approve:",
+        data.signoff_examples?.approve?.curl || "Unavailable",
+        "",
+        "Reject:",
+        data.signoff_examples?.reject?.curl || "Unavailable"
+      ].join("\n");
     }
   </script>
 </body>

@@ -5,25 +5,71 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Krionis Configuration</title>
   <style>
-    :root { --bg:#f5f5f7; --panel:rgba(255,255,255,.9); --ink:#111; --muted:#6e6e73; --line:rgba(17,17,17,.1); --fill:#111; --fill-soft:rgba(17,17,17,.06); --shadow:0 24px 60px rgba(15,15,15,.08); --radius-xl:28px; }
+    :root {
+      --bg:#f5f5f7;
+      --panel:rgba(255,255,255,.9);
+      --ink:#111;
+      --muted:#6e6e73;
+      --line:rgba(17,17,17,.1);
+      --fill:#111;
+      --fill-soft:rgba(17,17,17,.06);
+      --shadow:0 24px 60px rgba(15,15,15,.08);
+      --radius-xl:28px;
+    }
     * { box-sizing:border-box; }
-    body { margin:0; min-height:100vh; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue",Arial,sans-serif; background:linear-gradient(180deg,#fbfbfc 0%,var(--bg) 100%); color:var(--ink); }
-    .shell { max-width:1320px; margin:0 auto; padding:28px 20px 40px; }
-    .panel { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius-xl); box-shadow:var(--shadow); padding:24px; }
+    body {
+      margin:0;
+      min-height:100vh;
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue",Arial,sans-serif;
+      background:linear-gradient(180deg,#fbfbfc 0%,var(--bg) 100%);
+      color:var(--ink);
+    }
+    .shell { max-width:1380px; margin:0 auto; padding:28px 20px 40px; }
+    .panel {
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:var(--radius-xl);
+      box-shadow:var(--shadow);
+      padding:24px;
+    }
     .hero { margin-bottom:18px; }
     .nav, .grid, .profiles { display:grid; gap:16px; }
     .nav { grid-template-columns:repeat(auto-fit,minmax(120px,max-content)); margin-bottom:18px; }
-    .grid { grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); }
-    .profiles { grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); margin-top:16px; }
-    .linkbtn,.out,.item,.profile { border-radius:20px; border:1px solid var(--line); background:rgba(255,255,255,.88); padding:14px 16px; }
-    .linkbtn,button { text-decoration:none; color:var(--ink); background:var(--fill-soft); font-weight:600; display:inline-flex; justify-content:center; align-items:center; border:1px solid var(--line); border-radius:999px; padding:12px 16px; cursor:pointer; }
+    .grid { grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); }
+    .profiles { grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); margin-top:16px; }
+    .linkbtn,.out,.item,.profile {
+      border-radius:20px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.88);
+      padding:14px 16px;
+    }
+    .linkbtn,button {
+      text-decoration:none;
+      color:var(--ink);
+      background:var(--fill-soft);
+      font-weight:600;
+      display:inline-flex;
+      justify-content:center;
+      align-items:center;
+      border:1px solid var(--line);
+      border-radius:999px;
+      padding:12px 16px;
+      cursor:pointer;
+    }
     .linkbtn.active, button.primary { background:var(--fill); color:#fff; }
     button { font:inherit; }
-    p { color:var(--muted); line-height:1.6; }
+    p { color:var(--muted); line-height:1.6; margin:0; }
     .tiny { color:var(--muted); font-size:.86rem; line-height:1.55; }
     .mono { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
     .row { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
-    select { min-width:260px; border:1px solid var(--line); border-radius:16px; padding:12px 14px; font:inherit; background:#fff; }
+    select {
+      min-width:260px;
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:12px 14px;
+      font:inherit;
+      background:#fff;
+    }
     .profile.active { border-color:rgba(17,17,17,.24); box-shadow:inset 0 0 0 1px rgba(17,17,17,.06); }
   </style>
 </head>
@@ -31,8 +77,9 @@
   <main class="shell">
     <section class="panel hero">
       <h1>Configuration</h1>
-      <p>Resolved model runtime, switchable model profiles, HITL thresholds, local storage paths, and refresh settings loaded from YAML.</p>
+      <p>Resolved runtime defaults, switchable inference profiles, agent runtime profiles, embedding catalogs, and resource-pressure guidance loaded from YAML.</p>
     </section>
+
     <nav class="nav">
       <a class="linkbtn" href="/">Operator</a>
       <a class="linkbtn" href="/ui/telemetry">Telemetry</a>
@@ -41,34 +88,80 @@
       <a class="linkbtn" href="/ui/records">Records</a>
       <a class="linkbtn" href="/ui/reviews">Reviews</a>
     </nav>
+
     <section class="grid">
       <div class="panel">
-        <h2>Model Switching</h2>
-        <p class="tiny">Choose a named profile and Krionis will write it into YAML and reset only the isolated query worker. The next query loads the new model.</p>
+        <h2>Default Inference Profile</h2>
+        <p class="tiny">Persist the default inference runtime to YAML and reset only the isolated model worker.</p>
         <div class="row" style="margin-top:16px;">
           <select id="profile-select"></select>
           <button id="apply-profile" class="primary">Apply Profile</button>
           <button id="reload-model">Reload Worker</button>
         </div>
-        <div id="model-message" class="out tiny" style="margin-top:16px;">Loading model profiles...</div>
+        <div id="model-message" class="out tiny" style="margin-top:16px;">Loading profiles...</div>
         <div id="profiles-box" class="profiles"></div>
       </div>
-      <div class="panel"><h2>Runtime Config</h2><div id="models-box" class="out tiny"></div></div>
-      <div class="panel"><h2>Paths</h2><div id="paths-box" class="out tiny mono"></div></div>
-      <div class="panel"><h2>HITL</h2><div id="hitl-box" class="out tiny"></div></div>
-      <div class="panel"><h2>Refresh</h2><div id="refresh-box" class="out tiny"></div></div>
+
+      <div class="panel">
+        <h2>Current Runtime</h2>
+        <div id="models-box" class="out tiny"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Paths</h2>
+        <div id="paths-box" class="out tiny mono"></div>
+      </div>
+
+      <div class="panel">
+        <h2>HITL</h2>
+        <div id="hitl-box" class="out tiny"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Runtime Profiles</h2>
+        <div id="runtime-profiles-box" class="profiles"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Inference Catalog</h2>
+        <div id="inference-catalog-box" class="profiles"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Embedding Catalog</h2>
+        <div id="embedding-catalog-box" class="profiles"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Assignments</h2>
+        <div id="assignments-box" class="out tiny mono"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Resource Policy</h2>
+        <div id="resource-policy-box" class="out tiny"></div>
+      </div>
     </section>
   </main>
+
   <script>
     const modelsBox = document.getElementById("models-box");
     const pathsBox = document.getElementById("paths-box");
     const hitlBox = document.getElementById("hitl-box");
-    const refreshBox = document.getElementById("refresh-box");
     const profileSelect = document.getElementById("profile-select");
     const applyProfileButton = document.getElementById("apply-profile");
     const reloadModelButton = document.getElementById("reload-model");
     const modelMessage = document.getElementById("model-message");
     const profilesBox = document.getElementById("profiles-box");
+    const runtimeProfilesBox = document.getElementById("runtime-profiles-box");
+    const inferenceCatalogBox = document.getElementById("inference-catalog-box");
+    const embeddingCatalogBox = document.getElementById("embedding-catalog-box");
+    const assignmentsBox = document.getElementById("assignments-box");
+    const resourcePolicyBox = document.getElementById("resource-policy-box");
+
+    function renderCards(target, items, formatter) {
+      target.innerHTML = (items || []).map(formatter).join("") || `<div class="profile tiny">No entries found.</div>`;
+    }
 
     function renderProfiles(items, activeProfile) {
       profileSelect.innerHTML = "";
@@ -79,12 +172,14 @@
         option.textContent = `${item.label} (${item.config.llm_model})`;
         if (item.name === activeProfile) option.selected = true;
         profileSelect.appendChild(option);
-
-        const card = document.createElement("div");
-        card.className = `profile tiny${item.name === activeProfile ? " active" : ""}`;
-        card.innerHTML = `<strong>${item.label}</strong><br>${item.description || ""}<br><br><strong>Model</strong><br>${item.config.llm_model}<br><br><strong>Runtime</strong><br>${item.config.device} / ${item.config.quantization_backend}${item.matches_current_runtime ? "<br><br><strong>Current runtime match</strong>" : ""}`;
-        profilesBox.appendChild(card);
       });
+      renderCards(profilesBox, items, (item) => `
+        <div class="profile tiny${item.name === activeProfile ? " active" : ""}">
+          <strong>${item.label}</strong><br>${item.description || ""}<br><br>
+          <strong>Model</strong><br>${item.config.llm_model}<br><br>
+          <strong>Runtime</strong><br>${item.config.device} / ${item.config.quantization_backend}${item.matches_current_runtime ? "<br><br><strong>Matches current runtime</strong>" : ""}
+        </div>
+      `);
     }
 
     async function loadConfiguration() {
@@ -92,14 +187,66 @@
         const res = await fetch("/platform/configuration");
         const json = await res.json();
         const models = json.models || {};
-        modelsBox.innerHTML = `<strong>Active profile</strong><br>${models.active_profile || "custom"}<br><br><strong>LLM</strong><br>${models.llm_model || "Not set"}<br><br><strong>Embeddings</strong><br>${models.embedding_model || "Not set"}<br><br><strong>Device</strong><br>${models.device || "?"} -> ${models.effective_device || "?"}<br><br><strong>Quantization</strong><br>${models.quantization_backend || "?"} -> ${models.effective_quantization_backend || "?"}<br><br><strong>Prompt</strong><br>${models.prompt_version || "?"}`;
+        const currentRuntime = models.current_runtime || {};
+        modelsBox.innerHTML = `
+          <strong>Active profile</strong><br>${models.active_profile || "custom"}<br><br>
+          <strong>Inference model</strong><br>${currentRuntime.inference_model || models.llm_model || "Not set"}<br><br>
+          <strong>Embedding model</strong><br>${currentRuntime.embedding_model || models.embedding_model || "Not set"}<br><br>
+          <strong>Runtime profile</strong><br>${currentRuntime.runtime_profile || "custom"}<br><br>
+          <strong>Device</strong><br>${models.device || "?"} -> ${models.effective_device || "?"}<br><br>
+          <strong>Quantization</strong><br>${models.quantization_backend || "?"} -> ${models.effective_quantization_backend || "?"}<br><br>
+          <strong>Prompt version</strong><br>${models.prompt_version || "?"}
+        `;
+
         const paths = json.paths || {};
         pathsBox.textContent = Object.entries(paths).map(([key, value]) => `${key} = ${value}`).join("\n");
+
         const hitl = json.hitl || {};
-        hitlBox.innerHTML = `<strong>Keywords</strong><br>${(hitl.review_keywords || []).join(", ") || "none"}<br><br><strong>Length threshold</strong><br>${hitl.response_length_threshold ?? "?"}<br><br><strong>Preview chars</strong><br>${hitl.response_preview_chars ?? "?"}`;
-        refreshBox.innerHTML = `<strong>Telemetry refresh</strong><br>every ${json.refresh?.telemetry_refresh_seconds || 5} seconds`;
-        renderProfiles(json.model_profiles?.profiles || [], json.model_profiles?.active_profile || models.active_profile);
-        modelMessage.textContent = "Select a profile to switch models without editing YAML by hand.";
+        hitlBox.innerHTML = `
+          <strong>Keywords</strong><br>${(hitl.review_keywords || []).join(", ") || "none"}<br><br>
+          <strong>Length threshold</strong><br>${hitl.response_length_threshold ?? "?"}<br><br>
+          <strong>Preview chars</strong><br>${hitl.response_preview_chars ?? "?"}<br><br>
+          <strong>Signoff API</strong><br>GET /review/{review_id}/signoff
+        `;
+
+        const modelProfiles = json.model_profiles || {};
+        renderProfiles(modelProfiles.profiles || [], modelProfiles.active_profile || models.active_profile);
+
+        renderCards(runtimeProfilesBox, modelProfiles.runtime_profiles || [], (item) => `
+          <div class="profile tiny">
+            <strong>${item.label || item.name}</strong><br>${item.description || ""}<br><br>
+            <strong>Inference</strong><br>${item.inference_model || "inherits default"}<br><br>
+            <strong>Embeddings</strong><br>${item.embedding_model || "inherits default"}<br><br>
+            <strong>Model profile</strong><br>${item.model_profile || "custom"}${item.recommend_for_low_resource ? "<br><br><strong>Recommended for constrained hosts</strong>" : ""}
+          </div>
+        `);
+
+        renderCards(inferenceCatalogBox, modelProfiles.inference_catalog || [], (item) => `
+          <div class="profile tiny">
+            <strong>${item.label || item.name}</strong><br>${item.description || ""}<br><br>
+            <strong>HF ID</strong><br>${item.huggingface_id}<br><br>
+            <strong>Size</strong><br>${item.size || "unknown"}${item.recommended_for_low_resource ? "<br><br><strong>Low-resource friendly</strong>" : ""}
+          </div>
+        `);
+
+        renderCards(embeddingCatalogBox, modelProfiles.embedding_catalog || [], (item) => `
+          <div class="profile tiny">
+            <strong>${item.label || item.name}</strong><br>${item.description || ""}<br><br>
+            <strong>HF ID</strong><br>${item.huggingface_id}<br><br>
+            <strong>Size</strong><br>${item.size || "unknown"}${item.recommended_for_low_resource ? "<br><br><strong>Low-resource friendly</strong>" : ""}
+          </div>
+        `);
+
+        assignmentsBox.textContent = JSON.stringify(modelProfiles.agent_assignments || {}, null, 2);
+        const resourcePolicy = json.resource_policy || modelProfiles.resource_policy || {};
+        resourcePolicyBox.innerHTML = `
+          <strong>Low-memory threshold</strong><br>${resourcePolicy.low_memory_threshold_gb ?? "?"} GB<br><br>
+          <strong>High-CPU threshold</strong><br>${resourcePolicy.high_cpu_threshold_percent ?? "?"}%<br><br>
+          <strong>Recommended shared profile</strong><br>${resourcePolicy.recommended_shared_profile || "shared-compact"}<br><br>
+          <strong>Smaller profiles</strong><br>${(resourcePolicy.smaller_runtime_profiles || []).join(", ") || "shared-compact"}
+        `;
+
+        modelMessage.textContent = "Apply a default profile for the shared fallback runtime, while agent runtime profiles remain selectable independently in the operator view.";
       } catch (error) {
         modelsBox.textContent = error.message;
         modelMessage.textContent = error.message;
@@ -107,7 +254,7 @@
     }
 
     async function applyProfile() {
-      modelMessage.textContent = "Applying model profile...";
+      modelMessage.textContent = "Applying default inference profile...";
       try {
         const res = await fetch("/platform/models/apply", {
           method: "POST",

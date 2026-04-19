@@ -17,7 +17,7 @@ from rag_llm_api_pipeline.api.platform_routes import router as platform_router
 from rag_llm_api_pipeline.api.review_routes import router as review_router
 from rag_llm_api_pipeline.core.controlled import (
     build_controlled_response,
-    execute_query,
+    execute_query_with_runtime,
 )
 from rag_llm_api_pipeline.core.security import get_user_id
 from rag_llm_api_pipeline.db import compliance_store, metadata_store, review_store
@@ -74,6 +74,30 @@ def _wire_orchestrator(app: FastAPI) -> None:
 
     except Exception:
         logger.exception("Failed to wire orchestrator routes into the main API.")
+
+
+def _get_agent_runtime_selection(agent_ref: str) -> dict[str, Any]:
+    try:
+        _ensure_orchestrator_import_path()
+        from rag_orchestrator.api._state import manager
+
+        handles = getattr(manager, "handles", {}) or {}
+        handle = handles.get(agent_ref)
+        if handle is None:
+            for value in handles.values():
+                if str(getattr(value, "name", "")) == agent_ref:
+                    handle = value
+                    break
+                if str(getattr(value, "id", "")) == agent_ref:
+                    handle = value
+                    break
+        if handle is None:
+            return {}
+        spec = getattr(handle, "spec", None)
+        config = getattr(spec, "config", None) if spec is not None else None
+        return dict(config or {})
+    except Exception:
+        return {}
 
 
 OPENAPI_TAGS = [
@@ -139,6 +163,18 @@ class QueryRequest(BaseModel):
         description="Natural-language question to send through the Krionis query pipeline.",
         examples=["What is the restart sequence for this machine?"],
     )
+    runtime_profile: str | None = Field(
+        default=None,
+        description="Optional named runtime profile for inference and embeddings.",
+    )
+    inference_model: str | None = Field(
+        default=None,
+        description="Optional Hugging Face inference model key or identifier.",
+    )
+    embedding_model: str | None = Field(
+        default=None,
+        description="Optional Hugging Face embedding model key or identifier.",
+    )
 
 
 class ControlledAgentQueryRequest(BaseModel):
@@ -160,6 +196,18 @@ class ControlledAgentQueryRequest(BaseModel):
     context: str | None = Field(
         default="",
         description="Optional additional context provided with the query.",
+    )
+    runtime_profile: str | None = Field(
+        default=None,
+        description="Optional runtime profile override for this query.",
+    )
+    inference_model: str | None = Field(
+        default=None,
+        description="Optional inference model override for this query.",
+    )
+    embedding_model: str | None = Field(
+        default=None,
+        description="Optional embedding model override for this query.",
     )
 
 
@@ -212,7 +260,15 @@ def create_app() -> FastAPI:
                 payload.system,
                 payload.question,
             )
-            result = execute_query(payload.system, payload.question)
+            runtime_selection = payload.model_dump(
+                include={"runtime_profile", "inference_model", "embedding_model"},
+                exclude_none=True,
+            )
+            result = execute_query_with_runtime(
+                payload.system,
+                payload.question,
+                runtime_selection=runtime_selection,
+            )
             return build_controlled_response(
                 system_id=payload.system,
                 question=payload.question,
@@ -220,6 +276,7 @@ def create_app() -> FastAPI:
                 user_id=user_id,
                 trace_id=trace_id,
                 route_name="direct_query",
+                runtime_selection=runtime_selection,
             )
 
         except Exception as exc:
@@ -245,7 +302,18 @@ def create_app() -> FastAPI:
             # Agent lifecycle remains in the orchestrator, but all answer generation
             # is isolated in the dedicated query worker so the web server stays alive
             # during cold model load or heavy local inference.
-            result = execute_query(payload.system, payload.question)
+            runtime_selection = {
+                **_get_agent_runtime_selection(payload.task_id),
+                **payload.model_dump(
+                    include={"runtime_profile", "inference_model", "embedding_model"},
+                    exclude_none=True,
+                ),
+            }
+            result = execute_query_with_runtime(
+                payload.system,
+                payload.question,
+                runtime_selection=runtime_selection,
+            )
             return build_controlled_response(
                 system_id=payload.system,
                 question=payload.question,
@@ -254,6 +322,7 @@ def create_app() -> FastAPI:
                 trace_id=trace_id,
                 route_name="orchestrator_query",
                 agent_task_id=payload.task_id,
+                runtime_selection=runtime_selection,
             )
 
         except Exception as exc:

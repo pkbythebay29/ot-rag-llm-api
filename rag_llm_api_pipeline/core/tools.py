@@ -15,10 +15,19 @@ from rag_llm_api_pipeline.core.interfaces import (
 class LegacyRetrieverAdapter(Retriever):
     """Adapter around the existing retrieval code path."""
 
-    def retrieve(self, system_name: str, question: str) -> RetrievalResult:
+    def retrieve(
+        self,
+        system_name: str,
+        question: str,
+        model_selection: dict[str, Any] | None = None,
+    ) -> RetrievalResult:
         from rag_llm_api_pipeline.retriever import _retrieve_chunks
 
-        chunks, context, chunks_meta, timings = _retrieve_chunks(system_name, question)
+        chunks, context, chunks_meta, timings = _retrieve_chunks(
+            system_name,
+            question,
+            model_selection=model_selection,
+        )
         return RetrievalResult(
             question=question,
             chunks=list(chunks),
@@ -31,10 +40,15 @@ class LegacyRetrieverAdapter(Retriever):
 class LegacyGeneratorAdapter(Generator):
     """Adapter around the existing generation code path."""
 
-    def generate(self, question: str, context: str) -> GenerationResult:
+    def generate(
+        self,
+        question: str,
+        context: str,
+        model_selection: dict[str, Any] | None = None,
+    ) -> GenerationResult:
         from rag_llm_api_pipeline.llm_wrapper import ask_llm
 
-        text, stats = ask_llm(question, context)
+        text, stats = ask_llm(question, context, model_selection=model_selection)
         return GenerationResult(text=text, stats=dict(stats))
 
 
@@ -53,10 +67,19 @@ class DocumentSearchTool(Tool):
     def run(self, **kwargs: Any) -> dict[str, Any]:
         system_name = str(kwargs["system_name"])
         question = str(kwargs["question"])
+        model_selection = kwargs.get("model_selection")
 
         started_at = time.perf_counter()
-        retrieval = self.retriever.retrieve(system_name, question)
-        generation = self.generator.generate(question, retrieval.context)
+        retrieval = self.retriever.retrieve(
+            system_name,
+            question,
+            model_selection=model_selection,
+        )
+        generation = self.generator.generate(
+            question,
+            retrieval.context,
+            model_selection=model_selection,
+        )
         total_sec = round(time.perf_counter() - started_at, 4)
 
         stats = {

@@ -45,35 +45,86 @@ def get_response_preview_chars() -> int:
     )
 
 
-def get_version_placeholders() -> tuple[str, str]:
+def get_version_placeholders(
+    runtime_selection: dict[str, Any] | None = None,
+) -> tuple[str, str]:
     config = load_config() or {}
     hitl_cfg = config.get("hitl", {})
     llm_cfg = config.get("llm", {})
     model_cfg = config.get("models", {})
+    runtime = runtime_selection or {}
     model_version = str(
-        hitl_cfg.get("model_version")
+        runtime.get("inference_model")
+        or runtime.get("llm_model")
+        or runtime.get("inference_model_key")
+        or runtime.get("runtime_profile")
+        or hitl_cfg.get("model_version")
         or model_cfg.get("llm_model")
         or "model-version-placeholder"
     )
     prompt_version = str(
-        hitl_cfg.get("prompt_version")
+        runtime.get("prompt_version")
+        or hitl_cfg.get("prompt_version")
         or llm_cfg.get("prompt_version")
         or "prompt-version-placeholder"
     )
     return model_version, prompt_version
 
 
-def requires_human_review(query: str, response: str) -> bool:
-    normalized_query = (query or "").lower()
-    normalized_response = (response or "").lower()
-
-    keywords = get_review_keywords()
-    keyword_match = any(
-        keyword in normalized_query or keyword in normalized_response
-        for keyword in keywords
-    )
-    response_too_long = len(response or "") >= get_response_length_threshold()
-    return keyword_match or response_too_long
+def create_signoff_payload_examples(
+    review_id: str,
+    *,
+    base_url: str,
+    reviewer_id: str = "qa-reviewer-1",
+    final_response: str = "Approved response text.",
+    reviewer_notes: str = "Validated against the current controlled source.",
+) -> dict[str, Any]:
+    approve_path = f"/review/{review_id}/approve"
+    reject_path = f"/review/{review_id}/reject"
+    approve_headers = {
+        "x-api-key": "<review-api-key>",
+        "x-reviewer-id": reviewer_id,
+        "content-type": "application/json",
+    }
+    approve_body = {
+        "final_response": final_response,
+        "reviewer_notes": reviewer_notes,
+    }
+    reject_body = {
+        "reviewer_notes": "Rejected pending clarification or additional evidence.",
+    }
+    return {
+        "approve": {
+            "method": "POST",
+            "path": approve_path,
+            "url": f"{base_url.rstrip('/')}{approve_path}",
+            "headers": approve_headers,
+            "body": approve_body,
+            "curl": (
+                "curl -X POST "
+                f"\"{base_url.rstrip('/')}{approve_path}\" "
+                "-H \"x-api-key: <review-api-key>\" "
+                f"-H \"x-reviewer-id: {reviewer_id}\" "
+                "-H \"content-type: application/json\" "
+                f"-d '{{\"final_response\":\"{final_response}\",\"reviewer_notes\":\"{reviewer_notes}\"}}'"
+            ),
+        },
+        "reject": {
+            "method": "POST",
+            "path": reject_path,
+            "url": f"{base_url.rstrip('/')}{reject_path}",
+            "headers": approve_headers,
+            "body": reject_body,
+            "curl": (
+                "curl -X POST "
+                f"\"{base_url.rstrip('/')}{reject_path}\" "
+                "-H \"x-api-key: <review-api-key>\" "
+                f"-H \"x-reviewer-id: {reviewer_id}\" "
+                "-H \"content-type: application/json\" "
+                "-d '{\"reviewer_notes\":\"Rejected pending clarification or additional evidence.\"}'"
+            ),
+        },
+    }
 
 
 def create_review_item(
@@ -85,9 +136,10 @@ def create_review_item(
     trace_id: str | None = None,
     retrieved_documents: list[dict[str, Any]] | None = None,
     response_preview: str | None = None,
+    runtime_selection: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     created_at = utc_now_iso()
-    model_version, prompt_version = get_version_placeholders()
+    model_version, prompt_version = get_version_placeholders(runtime_selection)
     preview = response_preview
     if preview is None:
         preview_limit = get_response_preview_chars()
@@ -113,4 +165,18 @@ def create_review_item(
         },
         "model_version": model_version,
         "prompt_version": prompt_version,
+        "runtime": dict(runtime_selection or {}),
     }
+
+
+def requires_human_review(query: str, response: str) -> bool:
+    normalized_query = (query or "").lower()
+    normalized_response = (response or "").lower()
+
+    keywords = get_review_keywords()
+    keyword_match = any(
+        keyword in normalized_query or keyword in normalized_response
+        for keyword in keywords
+    )
+    response_too_long = len(response or "") >= get_response_length_threshold()
+    return keyword_match or response_too_long

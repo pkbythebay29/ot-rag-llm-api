@@ -6,8 +6,9 @@ Krionis is a human-in-the-loop controlled RAG platform for traceable, reviewable
 
 - HITL as a control layer: risky or regulated outputs are routed into a review queue instead of being returned directly.
 - Traceability by default: every query produces a `trace_id`, and reviewed responses also carry a `review_id`.
-- Extensibility: the current RAG flow is wrapped behind an orchestrator hook and tool interface for future agent routing.
+- Extensibility: the RAG flow is wrapped behind an orchestrator hook and tool interface, with per-agent runtime selection for inference and embeddings.
 - Compliance alignment: system metadata, attributable records, and append-only audit logging are built into the platform.
+- Resource awareness: capacity endpoints warn when Krionis is running low on memory or compute and recommend smaller or shared runtimes.
 
 ## Product surfaces
 
@@ -27,6 +28,7 @@ Krionis is a human-in-the-loop controlled RAG platform for traceable, reviewable
 The built-in console is now split into focused pages:
 
 - Operator: start agents, rebuild the retrieval cache, submit controlled queries, route through a selected agent, and rate responses.
+- Operator: choose a default profile, then start agents with a separate runtime profile or explicit Hugging Face inference and embedding models.
 - Compliance: assess regulated documents against an indexed regulation corpus, then move flagged results into the normal review flow.
 - Telemetry: inspect agent inventory, queue telemetry, and recent routed query events.
 - Runtime: inspect the main process, worker state, and recent logs.
@@ -40,6 +42,7 @@ The built-in console is now split into focused pages:
 - Audit export pipelines
 - Workflow engines that react to `pending_review` outcomes
 - External portals that submit queries and poll trace or review records
+- External control planes that generate signoff calls from `GET /review/{review_id}/signoff`
 
 ## Recommended production topology
 

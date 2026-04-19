@@ -7,6 +7,14 @@ from rag_llm_api_pipeline.config_loader import (
     load_raw_config,
     save_config,
 )
+from rag_llm_api_pipeline.core.model_selection import (
+    get_agent_assignments,
+    get_embedding_catalog,
+    get_inference_catalog,
+    get_resource_policy,
+    get_runtime_profiles,
+    resolve_runtime_selection,
+)
 from rag_llm_api_pipeline.core.query_worker import reset_query_worker
 
 DEFAULT_MODEL_PROFILES: dict[str, dict[str, Any]] = {
@@ -67,6 +75,14 @@ def _settings_section(cfg: dict[str, Any]) -> dict[str, Any]:
     return settings
 
 
+def _retriever_section(cfg: dict[str, Any]) -> dict[str, Any]:
+    retriever = cfg.setdefault("retriever", {})
+    if not isinstance(retriever, dict):
+        retriever = {}
+        cfg["retriever"] = retriever
+    return retriever
+
+
 def _get_profiles(cfg: dict[str, Any]) -> dict[str, dict[str, Any]]:
     models = cfg.get("models", {}) or {}
     configured = models.get("profiles")
@@ -91,6 +107,7 @@ def get_model_profiles(config: dict[str, Any] | None = None) -> dict[str, Any]:
     settings = resolved.get("settings", {}) or {}
     profiles = _get_profiles(raw_cfg)
     active_profile = str(models.get("active_profile") or "custom").strip() or "custom"
+    current_runtime = resolve_runtime_selection(resolved)
 
     items: list[dict[str, Any]] = []
     current_signature = {
@@ -124,7 +141,22 @@ def get_model_profiles(config: dict[str, Any] | None = None) -> dict[str, Any]:
     return {
         "active_profile": active_profile,
         "current": current_signature,
+        "current_runtime": current_runtime,
         "profiles": items,
+        "inference_catalog": [
+            {"name": name, **payload}
+            for name, payload in get_inference_catalog(resolved).items()
+        ],
+        "embedding_catalog": [
+            {"name": name, **payload}
+            for name, payload in get_embedding_catalog(resolved).items()
+        ],
+        "runtime_profiles": [
+            {"name": name, **payload}
+            for name, payload in get_runtime_profiles(resolved).items()
+        ],
+        "agent_assignments": get_agent_assignments(resolved),
+        "resource_policy": get_resource_policy(resolved),
     }
 
 
@@ -137,6 +169,7 @@ def apply_model_profile(
     resolved_cfg = load_config()
     models = _models_section(raw_cfg)
     settings = _settings_section(raw_cfg)
+    retriever = _retriever_section(raw_cfg)
     profiles = _get_profiles(raw_cfg)
     overrides = dict(overrides or {})
 
@@ -151,6 +184,10 @@ def apply_model_profile(
             value = selected_profile.get(key)
             if value is not None:
                 models[key] = value
+        if selected_profile.get("llm_model"):
+            models["llm_model"] = selected_profile["llm_model"]
+        if selected_profile.get("inference_model"):
+            models["llm_model"] = selected_profile["inference_model"]
         settings["use_cpu"] = bool(
             selected_profile.get("use_cpu", settings.get("use_cpu", False))
         )
@@ -161,6 +198,8 @@ def apply_model_profile(
             models[key] = overrides[key]
     if "use_cpu" in overrides and overrides["use_cpu"] is not None:
         settings["use_cpu"] = bool(overrides["use_cpu"])
+    if "embedding_model" in overrides and overrides["embedding_model"] is not None:
+        retriever["embedding_model"] = overrides["embedding_model"]
     if overrides:
         models["active_profile"] = profile_name or "custom"
 
@@ -181,4 +220,5 @@ def apply_model_profile(
     )
     summary["previous_llm_model"] = resolved_cfg.get("models", {}).get("llm_model")
     summary["current_llm_model"] = refreshed.get("models", {}).get("llm_model")
+    summary["current_runtime"] = resolve_runtime_selection(refreshed)
     return summary

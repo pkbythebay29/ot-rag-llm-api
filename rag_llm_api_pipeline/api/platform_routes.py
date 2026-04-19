@@ -30,6 +30,11 @@ from rag_llm_api_pipeline.core.model_admin import (
     apply_model_profile,
     get_model_profiles,
 )
+from rag_llm_api_pipeline.core.model_selection import (
+    get_resource_policy,
+    resolve_runtime_selection,
+    summarize_runtime,
+)
 from rag_llm_api_pipeline.core.platform_state import list_recent_routes
 from rag_llm_api_pipeline.core.query_worker import (
     get_query_worker_status,
@@ -96,6 +101,9 @@ def _get_orchestrator_status() -> dict[str, Any]:
         registered = list_registered()
         handles = getattr(manager, "handles", {}) or {}
         for handle in handles.values():
+            runtime = summarize_runtime(
+                getattr(getattr(handle, "spec", None), "config", {})
+            )
             active_agents.append(
                 {
                     "task_id": getattr(handle, "id", ""),
@@ -103,6 +111,7 @@ def _get_orchestrator_status() -> dict[str, Any]:
                     "agent_type": getattr(handle, "agent_type", ""),
                     "system": getattr(handle, "system", None),
                     "ready": bool(getattr(handle, "ready", True)),
+                    "runtime": runtime,
                 }
             )
         batchers = getattr(manager, "batchers", {}) or {}
@@ -137,7 +146,8 @@ def _find_agent_handle(agent_ref: str) -> Any | None:
     return None
 
 
-def _get_capacity_status(active_agents_count: int) -> dict[str, Any]:
+def _get_capacity_status(active_agents: list[dict[str, Any]]) -> dict[str, Any]:
+    active_agents_count = len(active_agents)
     memory = _memory_snapshot()
     cpu_percent = _cpu_percent()
     available_gb = memory["available_gb"]
@@ -155,14 +165,39 @@ def _get_capacity_status(active_agents_count: int) -> dict[str, Any]:
         reason = "Not enough free memory for another agent"
     elif cpu_constrained:
         reason = "CPU is too busy for another agent"
+    resource_policy = get_resource_policy(load_config() or {})
+    smaller_profiles = list(resource_policy.get("smaller_runtime_profiles") or [])
+    recommendation = "Current capacity looks healthy."
+    if available_gb <= float(resource_policy.get("low_memory_threshold_gb", 4.0)):
+        recommendation = (
+            "Krionis is running low on memory. Prefer smaller models or reuse the same "
+            f"runtime profile across agents. Suggested profiles: {', '.join(smaller_profiles) or 'shared-compact'}."
+        )
+    elif cpu_percent >= float(resource_policy.get("high_cpu_threshold_percent", 90.0)):
+        recommendation = (
+            "Krionis is under compute pressure. Reuse the same inference runtime where possible "
+            "instead of starting many distinct model combinations."
+        )
+    unique_runtime_count = len(
+        {
+            str((agent.get("runtime") or {}).get("signature") or "")
+            for agent in active_agents
+            if (agent.get("runtime") or {}).get("signature")
+        }
+    )
+    if unique_runtime_count > 1:
+        recommendation += f" There are currently {unique_runtime_count} distinct runtime combinations active."
     return {
         "can_start_another": can_start,
         "reason": reason,
         "active_agents": active_agents_count,
+        "unique_runtime_count": unique_runtime_count,
         "recommended_max_agents": recommended_max_agents,
         "available_memory_gb": available_gb,
         "total_memory_gb": total_gb,
         "cpu_percent": cpu_percent,
+        "recommendation": recommendation,
+        "resource_policy": resource_policy,
     }
 
 
@@ -261,6 +296,7 @@ def _configuration_summary(config: dict[str, Any]) -> dict[str, Any]:
             "preset": config.get("llm", {}).get("preset"),
             "prompt_version": config.get("llm", {}).get("prompt_version"),
             "active_profile": model_profiles["active_profile"],
+            "current_runtime": model_profiles["current_runtime"],
         },
         "model_profiles": model_profiles,
         "paths": {
@@ -282,6 +318,7 @@ def _configuration_summary(config: dict[str, Any]) -> dict[str, Any]:
         },
         "hitl": config.get("hitl", {}),
         "compliance": config.get("compliance", {}),
+        "resource_policy": get_resource_policy(config),
     }
 
 
@@ -304,6 +341,18 @@ class AgentStartRequest(BaseModel):
         description="Prefix used when creating the agent instance name.",
     )
     tenant: str | None = Field(default="default", description="Optional tenant label.")
+    runtime_profile: str | None = Field(
+        default=None,
+        description="Optional named runtime profile for this agent.",
+    )
+    inference_model: str | None = Field(
+        default=None,
+        description="Optional inference model key or Hugging Face identifier.",
+    )
+    embedding_model: str | None = Field(
+        default=None,
+        description="Optional embedding model key or Hugging Face identifier.",
+    )
 
 
 class IndexRebuildResponse(BaseModel):
@@ -324,6 +373,12 @@ class ModelApplyRequest(BaseModel):
     quantization_backend: str | None = None
     low_cpu_mem_usage: bool | None = None
     use_cpu: bool | None = None
+    embedding_model: str | None = None
+
+
+class IndexRebuildRequest(BaseModel):
+    runtime_profile: str | None = None
+    embedding_model: str | None = None
 
 
 @router.get(
@@ -357,9 +412,7 @@ def get_dashboard_status() -> dict[str, Any]:
         "recent_routes": list_recent_routes(),
         "orchestrator": {
             **orchestrator,
-            "capacity": _get_capacity_status(
-                active_agents_count=len(orchestrator["active_agents"])
-            ),
+            "capacity": _get_capacity_status(orchestrator["active_agents"]),
         },
         "runtime": _runtime_summary(),
     }
@@ -388,9 +441,7 @@ def get_telemetry_status() -> dict[str, Any]:
         "refresh": {"telemetry_refresh_seconds": _get_refresh_seconds(config)},
         "orchestrator": {
             **orchestrator,
-            "capacity": _get_capacity_status(
-                active_agents_count=len(orchestrator["active_agents"])
-            ),
+            "capacity": _get_capacity_status(orchestrator["active_agents"]),
         },
         "recent_routes": list_recent_routes(),
     }
@@ -490,9 +541,20 @@ def get_index_status_route(system_name: str) -> dict[str, Any]:
     description="Rebuild the retrieval cache for a system in an isolated worker process and return the build report.",
     response_model=IndexRebuildResponse,
 )
-def rebuild_index_route(system_name: str) -> IndexRebuildResponse:
+def rebuild_index_route(
+    system_name: str, payload: IndexRebuildRequest | None = None
+) -> IndexRebuildResponse:
+    runtime_selection = {}
+    if payload is not None:
+        runtime_selection = payload.model_dump(exclude_none=True)
     try:
-        report = rebuild_index_in_worker(system_name)
+        try:
+            report = rebuild_index_in_worker(
+                system_name,
+                model_selection=runtime_selection or None,
+            )
+        except TypeError:
+            report = rebuild_index_in_worker(system_name)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
@@ -518,9 +580,7 @@ def get_active_agents_route() -> dict[str, Any]:
     orchestrator = _get_orchestrator_status()
     return {
         "items": orchestrator["active_agents"],
-        "capacity": _get_capacity_status(
-            active_agents_count=len(orchestrator["active_agents"])
-        ),
+        "capacity": _get_capacity_status(orchestrator["active_agents"]),
     }
 
 
@@ -547,10 +607,20 @@ async def start_agent_route(payload: AgentStartRequest) -> dict[str, Any]:
 
     handles = getattr(_get_manager(), "handles", {}) or {}
     suffix = len(handles) + 1
+    runtime = resolve_runtime_selection(
+        load_config() or {},
+        runtime_profile=payload.runtime_profile,
+        inference_model=payload.inference_model,
+        embedding_model=payload.embedding_model,
+        agent_type=payload.agent_type,
+        agent_name=f"{payload.name_prefix}{suffix}-{payload.agent_type}-0",
+        system_name=payload.system,
+    )
     spec = AgentSpec(
         name=f"{payload.name_prefix}{suffix}-{payload.agent_type}-0",
         system=payload.system,
         tenant=payload.tenant or "default",
+        config=runtime,
     )
     handle = await _get_manager().create(payload.agent_type, spec)
     return {
@@ -561,6 +631,7 @@ async def start_agent_route(payload: AgentStartRequest) -> dict[str, Any]:
         "system": handle.system,
         "ready": handle.ready,
         "started_at": utc_now_iso(),
+        "runtime": summarize_runtime(runtime),
     }
 
 

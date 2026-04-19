@@ -13,6 +13,44 @@ models:
   model_precision: auto
   quantization_backend: dynamic-int8
   low_cpu_mem_usage: true
+  inference_catalog:
+    qwen-0.5b-instruct:
+      label: Qwen 2.5 0.5B Instruct
+      huggingface_id: Qwen/Qwen2.5-0.5B-Instruct
+      size: small
+      recommended_for_low_resource: true
+      description: Smallest local instruct model for constrained CPU or low-memory hosts.
+    qwen-1.5b-instruct:
+      label: Qwen 2.5 1.5B Instruct
+      huggingface_id: Qwen/Qwen2.5-1.5B-Instruct
+      size: medium
+      recommended_for_low_resource: true
+      description: Balanced local instruct model when quality matters but memory is still limited.
+    qwen-3b-instruct:
+      label: Qwen 2.5 3B Instruct
+      huggingface_id: Qwen/Qwen2.5-3B-Instruct
+      size: large
+      recommended_for_low_resource: false
+      description: Higher-quality local instruct model that benefits from stronger hardware.
+  embedding_catalog:
+    minilm-l6:
+      label: all-MiniLM-L6-v2
+      huggingface_id: sentence-transformers/all-MiniLM-L6-v2
+      size: small
+      recommended_for_low_resource: true
+      description: Compact embedding model with the best memory footprint for shared use.
+    bge-small-en-v1.5:
+      label: BAAI bge-small-en-v1.5
+      huggingface_id: BAAI/bge-small-en-v1.5
+      size: small
+      recommended_for_low_resource: true
+      description: Stronger compact embedding model for quality-sensitive search workloads.
+    bge-base-en-v1.5:
+      label: BAAI bge-base-en-v1.5
+      huggingface_id: BAAI/bge-base-en-v1.5
+      size: medium
+      recommended_for_low_resource: false
+      description: Higher-capacity embedding model when memory pressure is acceptable.
   profiles:
     cpu-compact:
       label: CPU Compact
@@ -41,6 +79,50 @@ models:
       model_precision: auto
       quantization_backend: auto
       low_cpu_mem_usage: true
+  runtime_profiles:
+    shared-compact:
+      label: Shared Compact
+      description: Reuse the same compact inference and embedding models across agents.
+      model_profile: cpu-compact
+      inference_model: qwen-0.5b-instruct
+      embedding_model: minilm-l6
+      recommend_for_low_resource: true
+      reuse_recommended: true
+    balanced-search:
+      label: Balanced Search
+      description: Balanced inference with a stronger search encoder for most local deployments.
+      model_profile: cpu-balanced
+      inference_model: qwen-1.5b-instruct
+      embedding_model: bge-small-en-v1.5
+      recommend_for_low_resource: true
+      reuse_recommended: false
+    quality-gpu:
+      label: Quality GPU
+      description: Higher-quality inference and retrieval intended for stronger GPU hosts.
+      model_profile: gpu-quality
+      inference_model: qwen-3b-instruct
+      embedding_model: bge-base-en-v1.5
+      recommend_for_low_resource: false
+      reuse_recommended: false
+  agent_assignments:
+    default:
+      runtime_profile: shared-compact
+    by_agent_type:
+      retriever:
+        runtime_profile: shared-compact
+      dialogue:
+        runtime_profile: balanced-search
+      regulatory:
+        runtime_profile: balanced-search
+    by_system: {}
+    by_agent_name: {}
+  resource_policy:
+    low_memory_threshold_gb: 4.0
+    high_cpu_threshold_percent: 90.0
+    recommended_shared_profile: shared-compact
+    smaller_runtime_profiles:
+      - shared-compact
+      - balanced-search
   use_harmony: false
   memory_strategy:
     use_expandable_segments: true
@@ -121,6 +203,8 @@ hitl:
   response_preview_chars: 280
   model_version: model-version-placeholder
   prompt_version: prompt-v1
+  signoff_endpoint_template: /review/{review_id}/signoff
+  signoff_help: Use GET /review/{review_id}/signoff to fetch ready-to-run approval and rejection examples.
 
 review_store:
   sqlite_path: data/reviews/review_queue.sqlite3
@@ -150,7 +234,7 @@ security:
 
 system_metadata:
   system_name: Krionis HITL RAG API
-  version: 1.0.1
+  version: 1.1.0
   component_type: GAMP Category 5
   agent_system_id: krionis-rag-api
   module_classification:

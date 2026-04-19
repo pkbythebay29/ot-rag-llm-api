@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
+## [1.1.0] - 2026-04-19
+
+### Added
+- Hugging Face inference and embedding catalogs in YAML, plus named agent runtime profiles for reusable multi-model setups
+- Per-agent runtime selection in the operator UI and API, including explicit inference-model and embedding-model overrides
+- Embedding-aware index variants so different agents can use different retrieval models without sharing the wrong FAISS cache
+- `GET /review/{review_id}/signoff` for generated approval/rejection API examples and clearer external HITL signoff integration
+- Resource-pressure recommendations in the dashboard and configuration surfaces when Krionis is low on memory or compute
+
+### Changed
+- Controlled query responses and review items now carry runtime metadata for the exact inference and embedding selection used
+- Platform configuration and dashboard endpoints now expose inference catalogs, embedding catalogs, runtime profiles, and assignment defaults
+- Review UI, operator UI, static website, and docs now explain multi-model runtime selection and signoff generation directly
+
 ## [1.0.2] - 2026-04-12
 
 ### Changed

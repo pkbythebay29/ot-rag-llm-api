@@ -7,10 +7,12 @@ from threading import Lock
 from typing import Any
 
 
-def _run_index_build(system_name: str) -> dict[str, Any]:
+def _run_index_build(
+    system_name: str, model_selection: dict[str, Any] | None = None
+) -> dict[str, Any]:
     from rag_llm_api_pipeline.retriever import build_index
 
-    return build_index(system_name)
+    return build_index(system_name, model_selection=model_selection)
 
 
 _executor: ProcessPoolExecutor | None = None
@@ -35,7 +37,9 @@ def _get_executor() -> ProcessPoolExecutor:
 
 
 def rebuild_index_in_worker(
-    system_name: str, timeout_sec: float = 900.0
+    system_name: str,
+    model_selection: dict[str, Any] | None = None,
+    timeout_sec: float = 900.0,
 ) -> dict[str, Any]:
     global _executor
     _status["state"] = "running"
@@ -43,7 +47,7 @@ def rebuild_index_in_worker(
     _status["last_started_at"] = time.time()
 
     try:
-        future = _get_executor().submit(_run_index_build, system_name)
+        future = _get_executor().submit(_run_index_build, system_name, model_selection)
         result = future.result(timeout=timeout_sec)
         _status["state"] = "idle"
         _status["last_finished_at"] = time.time()

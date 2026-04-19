@@ -25,6 +25,7 @@ def test_risky_query_enters_pending_review(app_client):
     assert item["query"].startswith("What is the dosage")
     assert item["user_id"] == "operator-1"
     assert item["final_response"] is None
+    assert "runtime" in item
 
 
 def test_approve_review_stores_final_response(app_client):
@@ -101,6 +102,23 @@ def test_pending_review_endpoint_requires_api_key(app_client):
     authorized = client.get("/review/pending", headers={"x-api-key": "test-review-key"})
     assert authorized.status_code == 200
     assert len(authorized.json()["items"]) == 1
+    assert authorized.json()["items"][0]["signoff_path"].endswith("/signoff")
+
+
+def test_review_signoff_endpoint_returns_examples(app_client):
+    client = app_client["client"]
+    review_id = _submit_flagged_query(client)
+
+    response = client.get(
+        f"/review/{review_id}/signoff",
+        headers={"x-api-key": "test-review-key"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["review_id"] == review_id
+    assert body["signoff_examples"]["approve"]["method"] == "POST"
+    assert f"/review/{review_id}/approve" in body["signoff_examples"]["approve"]["url"]
 
 
 def test_root_ui_explains_hitl_and_audit(app_client):
@@ -115,6 +133,7 @@ def test_root_ui_explains_hitl_and_audit(app_client):
     assert "Apply Model" in response.text
     assert "Rebuild Cache" in response.text
     assert "Good" in response.text
+    assert "Embedding Model" in response.text
     assert "/ui/compliance" in response.text
     assert "/ui/telemetry" in response.text
     assert "/ui/runtime" in response.text
@@ -179,10 +198,14 @@ def test_platform_metadata_and_audit_routes(app_client):
     assert configuration.status_code == 200
     assert configuration.json()["paths"]["metadata_store"]
     assert configuration.json()["model_profiles"]["profiles"]
+    assert configuration.json()["model_profiles"]["runtime_profiles"]
+    assert configuration.json()["resource_policy"]["recommended_shared_profile"]
 
     models = client.get("/platform/models")
     assert models.status_code == 200
     assert any(item["name"] == "cpu-compact" for item in models.json()["profiles"])
+    assert models.json()["runtime_profiles"]
+    assert models.json()["embedding_catalog"]
 
 
 def test_quality_feedback_endpoint_records_rating(app_client):
@@ -235,6 +258,7 @@ def test_platform_agent_lifecycle_routes(app_client):
     )
     assert start.status_code == 200
     task_id = start.json()["task_id"]
+    assert start.json()["runtime"]["runtime_profile"] == "shared-compact"
 
     listed = client.get("/platform/agents")
     assert listed.status_code == 200
@@ -271,6 +295,45 @@ def test_model_profile_apply_updates_configuration_and_resets_worker(
     configuration = client.get("/platform/configuration")
     assert configuration.status_code == 200
     assert configuration.json()["models"]["active_profile"] == "cpu-balanced"
+
+
+def test_query_and_index_rebuild_accept_runtime_selection(app_client, monkeypatch):
+    client = app_client["client"]
+
+    response = client.post(
+        "/query",
+        json={
+            "system": "TestSystem",
+            "question": "What is the restart sequence?",
+            "runtime_profile": "balanced-search",
+            "inference_model": "qwen-1.5b-instruct",
+            "embedding_model": "bge-small-en-v1.5",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["runtime"]["runtime_profile"] == "balanced-search"
+    assert response.json()["runtime"]["embedding_model"]
+
+    from rag_llm_api_pipeline.api import platform_routes
+
+    monkeypatch.setattr(
+        platform_routes,
+        "rebuild_index_in_worker",
+        lambda system_name, model_selection=None: {
+            "num_chunks": 3,
+            "system": system_name,
+            "embedding_model": (model_selection or {}).get("embedding_model"),
+        },
+    )
+    rebuilt = client.post(
+        "/platform/indexes/TestSystem/rebuild",
+        json={
+            "runtime_profile": "balanced-search",
+            "embedding_model": "bge-small-en-v1.5",
+        },
+    )
+    assert rebuilt.status_code == 200
+    assert rebuilt.json()["report"]["embedding_model"] == "bge-small-en-v1.5"
 
 
 def test_model_reload_endpoint_resets_worker(app_client, monkeypatch):

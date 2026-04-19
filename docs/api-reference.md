@@ -25,7 +25,10 @@ Request body:
 ```json
 {
   "system": "TestSystem",
-  "question": "What is the restart sequence?"
+  "question": "What is the restart sequence?",
+  "runtime_profile": "shared-compact",
+  "inference_model": "qwen-0.5b-instruct",
+  "embedding_model": "minilm-l6"
 }
 ```
 
@@ -38,7 +41,12 @@ Approved response example:
   "system": "TestSystem",
   "question": "What is the restart sequence?",
   "answer": "The restart sequence begins by isolating the power source.",
-  "sources": ["Chunk 1"]
+  "sources": ["Chunk 1"],
+  "runtime": {
+    "runtime_profile": "shared-compact",
+    "inference_model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "embedding_model": "sentence-transformers/all-MiniLM-L6-v2"
+  }
 }
 ```
 
@@ -66,7 +74,8 @@ Request body:
   "task_id": "agent1-retriever-0",
   "system": "TestSystem",
   "question": "What is the restart sequence?",
-  "context": ""
+  "context": "",
+  "runtime_profile": "balanced-search"
 }
 ```
 
@@ -79,6 +88,10 @@ List pending review items. Requires `x-api-key`.
 ### `GET /review/{review_id}`
 
 Fetch a single review item. Requires `x-api-key`.
+
+### `GET /review/{review_id}/signoff`
+
+Fetch ready-to-run approval and rejection examples, including URLs, headers, JSON bodies, and cURL snippets. Requires `x-api-key`.
 
 ### `POST /review/{review_id}/approve`
 
@@ -137,7 +150,11 @@ Return source and cache state for one configured system.
 
 ### `POST /platform/indexes/{system_name}/rebuild`
 
-Rebuild the retrieval cache for a system in an isolated worker.
+Rebuild the retrieval cache for a system in an isolated worker. You can optionally provide `runtime_profile` or `embedding_model` in the request body so Krionis builds the matching embedding-specific cache.
+
+### `GET /platform/models`
+
+Return the available default inference profiles, Hugging Face inference catalog, embedding catalog, agent runtime profiles, and the currently resolved runtime selection.
 
 ### `GET /platform/agents`
 
@@ -154,7 +171,10 @@ Request body:
   "system": "TestSystem",
   "agent_type": "retriever",
   "name_prefix": "agent",
-  "tenant": "default"
+  "tenant": "default",
+  "runtime_profile": "balanced-search",
+  "inference_model": "qwen-1.5b-instruct",
+  "embedding_model": "bge-small-en-v1.5"
 }
 ```
 
